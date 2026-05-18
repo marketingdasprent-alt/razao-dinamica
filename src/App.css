@@ -708,6 +708,12 @@ body {
   text-align: center;
 }
 
+.contact-separator {
+  color: var(--gold);
+  opacity: 0.5;
+  margin: 0 6px;
+}
+
 /* ============================================
    FOOTER
    ============================================ */

@@ -180,6 +180,8 @@ function App() {
               <p className="contact-info">
                 <i className="fas fa-phone"></i>
                 <a href="tel:+351919381551">919 381 551</a>
+                <span className="contact-separator">|</span>
+                <a href="tel:+351910205029">910 205 029</a>
               </p>
             </div>
           </div>
@@ -208,7 +210,7 @@ function App() {
             <div className="footer-section">
               <h4>Contato</h4>
               <p><i className="fas fa-envelope footer-icon"></i> <a href="mailto:geral@razaodinamica.pt">geral@razaodinamica.pt</a></p>
-              <p><i className="fas fa-phone footer-icon"></i> <a href="tel:+351919381551">919 381 551</a></p>
+              <p><i className="fas fa-phone footer-icon"></i> <a href="tel:+351919381551">919 381 551</a> <span className="contact-separator">|</span> <a href="tel:+351910205029">910 205 029</a></p>
               <p><i className="fas fa-clock footer-icon"></i> Seg-Sex, 09:00-18:00</p>
             </div>
           </div>

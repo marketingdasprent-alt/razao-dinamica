@@ -1,13 +1,25 @@
 import { useState, useEffect } from 'react'
 import './App.css'
+import LegalPage from './LegalPage'
 
 function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [animate, setAnimate] = useState(false)
+  const [route, setRoute] = useState(typeof window !== 'undefined' ? window.location.hash : '')
 
   useEffect(() => {
     setAnimate(true)
+    const onHashChange = () => {
+      setRoute(window.location.hash)
+      window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' })
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
+
+  if (route === '#privacidade' || route === '#politica-de-privacidade') {
+    return <LegalPage />
+  }
 
   return (
     <div className="app">
@@ -217,6 +229,22 @@ function App() {
 
           <div className="footer-bottom">
             <p>&copy; 2026 Razão Dinâmica. Todos os direitos reservados.</p>
+            <ul className="footer-legal">
+              <li><a href="#privacidade">Política de Privacidade e Cookies</a></li>
+              <li>
+                <a
+                  href="#cookies"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (typeof window !== 'undefined' && window.CookieScript) {
+                      window.CookieScript.instance.show()
+                    }
+                  }}
+                >
+                  Gerir Cookies
+                </a>
+              </li>
+            </ul>
           </div>
         </div>
       </footer>

@@ -190,6 +190,7 @@
     display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
   }
   .stat{
+    min-width:0;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     padding:22px 18px 34px;
     border-left:1px solid rgba(10,18,28,0.2);
@@ -863,6 +864,10 @@
 
   @media (min-width:861px){
     #mainNav .navlinks{visibility:visible!important;opacity:1!important;pointer-events:auto!important;transform:none!important;}
+  }
+
+  @media (min-width:541px) and (max-width:860px){
+    .stats .wrap{grid-template-columns:repeat(4,minmax(0,1fr));}
   }
 
   @media (max-width:540px){

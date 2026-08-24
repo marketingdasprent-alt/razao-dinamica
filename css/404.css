@@ -1,0 +1,22 @@
+:root{--ink:#0b1b2b;--ink-2:#102638;--paper:#f5f1e8;--paper-dim:#c8cece;--teal:#4a8288;--brass:#cba968;}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{background:var(--ink);color:var(--paper);font-family:'Plus Jakarta Sans',sans-serif;}
+body{min-width:0;min-height:100vh;min-height:100svh;overflow-x:hidden;}
+a{color:inherit;text-decoration:none;}
+.error-page{position:relative;display:flex;flex-direction:column;justify-content:space-between;min-height:100vh;min-height:100svh;padding:clamp(28px,5vw,72px);overflow:hidden;isolation:isolate;background:radial-gradient(circle at 85% 18%,rgba(74,130,136,.24),transparent 36%),linear-gradient(145deg,var(--ink),var(--ink-2));}
+.error-page::before,.error-page::after{content:"";position:absolute;z-index:-1;pointer-events:none;}
+.error-page::before{inset:auto -10vw -30vh 38vw;height:70vh;border:1px solid rgba(203,169,104,.2);border-radius:50%;}
+.error-page::after{left:0;bottom:17%;width:min(54vw,680px);height:1px;background:linear-gradient(90deg,var(--brass),transparent);}
+.error-logo{display:block;width:clamp(190px,25vw,300px);}
+.error-logo img{display:block;width:100%;height:auto;}
+.error-content{width:min(700px,100%);padding:clamp(70px,12vh,140px) 0 4vh;}
+.error-code{margin-bottom:18px;color:var(--brass);font-family:'IBM Plex Mono',monospace;font-size:clamp(4.8rem,14vw,10rem);font-weight:500;line-height:.85;letter-spacing:-.06em;}
+h1{max-width:680px;font-size:clamp(2rem,5vw,4.25rem);line-height:1.05;letter-spacing:-.035em;}
+.error-content>p:not(.error-code){margin-top:22px;color:var(--paper-dim);font-size:clamp(1rem,2vw,1.18rem);line-height:1.65;}
+.error-actions{display:flex;flex-wrap:wrap;align-items:center;gap:18px 26px;margin-top:38px;}
+.error-primary{display:inline-flex;align-items:center;gap:10px;padding:15px 26px;border-radius:2px;background:var(--brass);color:var(--ink);font-weight:700;box-shadow:0 8px 24px rgba(203,169,104,.2);}
+.error-primary span{transition:transform .2s;}.error-primary:hover span{transform:translateX(4px);}
+.error-secondary{padding:10px 0;border-bottom:1px solid var(--paper-dim);color:var(--paper-dim);}
+a:focus-visible{outline:3px solid var(--teal);outline-offset:5px;}
+@media(max-width:480px){.error-page{padding:28px 22px 36px;}.error-actions{align-items:stretch;flex-direction:column;}.error-primary,.error-secondary{justify-content:center;width:100%;text-align:center;}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;}}

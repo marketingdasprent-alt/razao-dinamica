@@ -1,4 +1,54 @@
 (function(){
+  // Consent-gated Meta Pixel. A future CMP must call
+  // window.RazaoDinamicaTracking.enableMarketing() only after valid marketing consent.
+  (function(){
+    var pixelId = '28161293560174741';
+    var enabled = false;
+    var loading = false;
+
+    function queue(){
+      if (window.fbq) return window.fbq;
+      var fbq = function(){ fbq.callMethod ? fbq.callMethod.apply(fbq, arguments) : fbq.queue.push(arguments); };
+      fbq.push = fbq;
+      fbq.loaded = true;
+      fbq.version = '2.0';
+      fbq.queue = [];
+      window._fbq = window.fbq = fbq;
+      return fbq;
+    }
+
+    function enableMarketing(){
+      if (enabled || loading) return;
+      loading = true;
+      var fbq = queue();
+      var script = document.createElement('script');
+      script.async = true;
+      script.src = 'https://connect.facebook.net/en_US/fbevents.js';
+      script.onload = function(){
+        enabled = true;
+        loading = false;
+        fbq('init', pixelId);
+        fbq('track', 'PageView');
+      };
+      script.onerror = function(){ loading = false; };
+      document.head.appendChild(script);
+    }
+
+    function track(eventName){
+      if (enabled && window.fbq) window.fbq('track', eventName);
+    }
+
+    window.RazaoDinamicaTracking = {
+      enableMarketing: enableMarketing,
+      trackWhatsAppClick: function(){ track('Contact'); },
+      trackLeadSent: function(){ track('Lead'); }
+    };
+
+    document.querySelectorAll('[data-meta-event="whatsapp"]').forEach(function(link){
+      link.addEventListener('click', function(){ window.RazaoDinamicaTracking.trackWhatsAppClick(); });
+    });
+  })();
+
     var nav = document.getElementById('mainNav');
     var burger = document.getElementById('burgerBtn');
     var panel = document.getElementById('mobileNavPanel');
@@ -318,6 +368,7 @@
         form.querySelectorAll('.is-filled').forEach(function(field){ field.classList.remove('is-filled'); });
         form.classList.add('is-success');
         status.textContent = 'Mensagem enviada com sucesso. Entraremos em contacto brevemente.';
+        if (window.RazaoDinamicaTracking) window.RazaoDinamicaTracking.trackLeadSent();
       } catch (error) {
         status.textContent = 'Não foi possível enviar a mensagem. Tente novamente ou contacte-nos por telefone.';
       } finally {

@@ -5,6 +5,7 @@
     var pixelId = '28161293560174741';
     var enabled = false;
     var loading = false;
+    var initialized = false;
 
     function queue(){
       if (window.fbq) return window.fbq;
@@ -19,6 +20,12 @@
 
     function enableMarketing(){
       if (enabled || loading) return;
+      if (initialized && window.fbq) {
+        window.fbq('consent', 'grant');
+        window.fbq('track', 'PageView');
+        enabled = true;
+        return;
+      }
       loading = true;
       var fbq = queue();
       var script = document.createElement('script');
@@ -26,6 +33,7 @@
       script.src = 'https://connect.facebook.net/en_US/fbevents.js';
       script.onload = function(){
         enabled = true;
+        initialized = true;
         loading = false;
         fbq('init', pixelId);
         fbq('track', 'PageView');
@@ -38,8 +46,14 @@
       if (enabled && window.fbq) window.fbq('track', eventName);
     }
 
+    function revokeMarketing(){
+      if (window.fbq && initialized) window.fbq('consent', 'revoke');
+      enabled = false;
+    }
+
     window.RazaoDinamicaTracking = {
       enableMarketing: enableMarketing,
+      revokeMarketing: revokeMarketing,
       trackWhatsAppClick: function(){ track('Contact'); },
       trackLeadSent: function(){ track('Lead'); }
     };
@@ -47,6 +61,86 @@
     document.querySelectorAll('[data-meta-event="whatsapp"]').forEach(function(link){
       link.addEventListener('click', function(){ window.RazaoDinamicaTracking.trackWhatsAppClick(); });
     });
+  })();
+
+  // Lightweight consent manager. Necessary storage is always active; marketing is opt-in.
+  (function(){
+    var storageKey = 'razaoDinamicaConsent';
+    var storageVersion = 1;
+    var banner = document.getElementById('cookieBanner');
+    var preferences = document.getElementById('cookiePreferences');
+    var panel = preferences && preferences.querySelector('.cookie-preferences-panel');
+    var marketing = document.getElementById('marketingConsent');
+    var acceptButton = document.querySelector('[data-cookie-accept]');
+    var rejectButton = document.querySelector('[data-cookie-reject]');
+    var manageButton = document.querySelector('[data-cookie-manage]');
+    var saveButton = document.querySelector('[data-cookie-save]');
+    var footerButton = document.querySelector('[data-cookie-settings]');
+    if (!banner || !preferences || !marketing) return;
+    var previousFocus = null;
+    var openedFromBanner = false;
+
+    function readChoice(){
+      try {
+        var value = JSON.parse(window.localStorage.getItem(storageKey));
+        return value && value.version === storageVersion && value.necessary === true && typeof value.marketing === 'boolean' ? value : null;
+      } catch (error) { return null; }
+    }
+    function writeChoice(marketingAllowed){
+      var value = { version:storageVersion, necessary:true, marketing:Boolean(marketingAllowed), updatedAt:new Date().toISOString() };
+      try { window.localStorage.setItem(storageKey, JSON.stringify(value)); } catch (error) {}
+      if (value.marketing) window.RazaoDinamicaTracking.enableMarketing();
+      else window.RazaoDinamicaTracking.revokeMarketing();
+      return value;
+    }
+    function focusable(){ return Array.prototype.slice.call(panel.querySelectorAll('button,[href],input:not([disabled]),[tabindex]:not([tabindex="-1"])')); }
+    function showBanner(){ banner.hidden = false; document.body.classList.add('cookie-banner-visible'); }
+    function hideBanner(){ banner.hidden = true; document.body.classList.remove('cookie-banner-visible'); }
+    function openPreferences(fromBanner, trigger){
+      openedFromBanner = Boolean(fromBanner);
+      previousFocus = trigger || document.activeElement;
+      var choice = readChoice();
+      marketing.checked = choice ? choice.marketing : false;
+      preferences.hidden = false;
+      document.body.classList.add('cookie-preferences-open');
+      window.requestAnimationFrame(function(){ preferences.classList.add('is-open'); preferences.querySelector('.cookie-preferences-close').focus(); });
+    }
+    function closePreferences(returnFocus){
+      preferences.classList.remove('is-open');
+      document.body.classList.remove('cookie-preferences-open');
+      window.setTimeout(function(){
+        preferences.hidden = true;
+        if (!readChoice()) showBanner();
+        if (returnFocus && previousFocus) previousFocus.focus();
+      }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 220);
+    }
+    function finish(marketingAllowed){
+      writeChoice(marketingAllowed);
+      hideBanner();
+      closePreferences(false);
+    }
+
+    acceptButton.addEventListener('click', function(){ finish(true); });
+    rejectButton.addEventListener('click', function(){ finish(false); });
+    manageButton.addEventListener('click', function(){ openPreferences(true, manageButton); });
+    saveButton.addEventListener('click', function(){ finish(marketing.checked); });
+    footerButton.addEventListener('click', function(){ openPreferences(false, footerButton); });
+    preferences.querySelectorAll('[data-cookie-close]').forEach(function(item){ item.addEventListener('click', function(){ closePreferences(true); }); });
+    document.addEventListener('keydown', function(event){
+      if (preferences.hidden) return;
+      if (event.key === 'Escape') { event.preventDefault(); closePreferences(true); }
+      if (event.key === 'Tab') {
+        var items = focusable();
+        var first = items[0];
+        var last = items[items.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
+    });
+
+    var choice = readChoice();
+    if (!choice) showBanner();
+    else if (choice.marketing) window.RazaoDinamicaTracking.enableMarketing();
   })();
 
     var nav = document.getElementById('mainNav');
@@ -131,7 +225,7 @@
         var target = document.querySelector(id);
         if (target) {
           e.preventDefault();
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          target.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
         }
       }
     });
@@ -159,6 +253,102 @@
         }
       });
     });
+  })();
+
+  // Accessible service details, populated from the service selected by the visitor.
+  (function(){
+    var modal = document.getElementById('servico-modal');
+    if (!modal) return;
+    var panel = modal.querySelector('.service-modal-panel');
+    var closeButton = modal.querySelector('.service-modal-close');
+    var title = document.getElementById('serviceModalTitle');
+    var number = document.getElementById('serviceModalNumber');
+    var description = document.getElementById('serviceModalDescription');
+    var list = document.getElementById('serviceModalList');
+    var cta = modal.querySelector('.service-modal-cta');
+    var serviceSelect = document.getElementById('serviceSelect');
+    var previousFocus = null;
+    var activeService = '';
+    var services = {
+      'Contabilidade': { number:'01', description:'Acompanhamos a organização contabilística da empresa e transformamos a informação financeira numa base clara para a gestão.', items:['Organização e acompanhamento contabilístico','Preparação de balancetes e demonstrações financeiras','Informação de apoio à gestão'] },
+      'Fiscalidade': { number:'02', description:'Apoiamos a empresa no acompanhamento fiscal e na organização das obrigações aplicáveis à sua atividade.', items:['Acompanhamento das obrigações fiscais','Organização da informação necessária','Esclarecimento de dúvidas fiscais correntes'] },
+      'Consultoria de gestão': { number:'03', description:'Analisamos a informação do negócio para apoiar decisões mais informadas e adequadas aos objetivos da empresa.', items:['Leitura de indicadores de gestão','Apoio à análise de decisões','Acompanhamento da evolução do negócio'] },
+      'Planeamento financeiro': { number:'04', description:'Ajudamos a organizar previsões e necessidades financeiras para dar maior clareza ao planeamento da empresa.', items:['Preparação de previsões financeiras','Acompanhamento de orçamento e tesouraria','Análise de necessidades de financiamento'] },
+      'Auditoria interna': { number:'05', description:'Realizamos uma leitura independente dos processos e controlos internos para ajudar a identificar riscos e oportunidades de melhoria.', items:['Revisão de processos internos','Análise de controlos e procedimentos','Identificação de áreas a acompanhar'] }
+    };
+
+    function focusable(){ return Array.prototype.slice.call(panel.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')); }
+    function openModal(service, trigger){
+      var data = services[service];
+      if (!data) return;
+      activeService = service;
+      previousFocus = trigger || document.activeElement;
+      number.textContent = data.number;
+      title.textContent = service;
+      description.textContent = data.description;
+      list.innerHTML = data.items.map(function(item){ return '<li>' + item + '</li>'; }).join('');
+      modal.hidden = false;
+      document.body.classList.add('modal-open');
+      window.requestAnimationFrame(function(){ modal.classList.add('is-open'); closeButton.focus(); });
+    }
+    function closeModal(returnFocus){
+      modal.classList.remove('is-open');
+      document.body.classList.remove('modal-open');
+      window.setTimeout(function(){
+        modal.hidden = true;
+        if (returnFocus && previousFocus) previousFocus.focus();
+      }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 220);
+    }
+
+    document.querySelectorAll('[data-service-detail]').forEach(function(trigger){
+      if (trigger.matches('.solution-card')) {
+        trigger.removeAttribute('role');
+        trigger.removeAttribute('tabindex');
+        trigger.removeAttribute('aria-label');
+      }
+      trigger.addEventListener('click', function(event){
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        openModal(trigger.getAttribute('data-service-detail'), trigger);
+      });
+      if (!trigger.matches('a,button')) trigger.addEventListener('keydown', function(event){
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openModal(trigger.getAttribute('data-service-detail'), trigger); }
+      });
+    });
+    modal.querySelectorAll('[data-modal-close]').forEach(function(item){ item.addEventListener('click', function(){ closeModal(true); }); });
+    cta.addEventListener('click', function(){
+      if (serviceSelect) {
+        serviceSelect.value = activeService;
+        serviceSelect.dispatchEvent(new Event('change', { bubbles:true }));
+      }
+      closeModal(false);
+      window.setTimeout(function(){
+        document.getElementById('contacto').scrollIntoView({ behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block:'start' });
+        if (serviceSelect) serviceSelect.focus({ preventScroll:true });
+      }, 240);
+    });
+    document.addEventListener('keydown', function(event){
+      if (modal.hidden) return;
+      if (event.key === 'Escape') { event.preventDefault(); closeModal(true); }
+      if (event.key === 'Tab') {
+        var items = focusable();
+        var first = items[0];
+        var last = items[items.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
+    });
+  })();
+
+  // Reveal a discrete shortcut after the visitor has moved away from the hero.
+  (function(){
+    var button = document.querySelector('.back-to-top');
+    if (!button) return;
+    var ticking = false;
+    function render(){ ticking = false; button.classList.toggle('is-visible', window.scrollY > Math.max(420, window.innerHeight * .65)); }
+    window.addEventListener('scroll', function(){ if (!ticking) { ticking = true; window.requestAnimationFrame(render); } }, { passive:true });
+    button.addEventListener('click', function(){ document.getElementById('top').scrollIntoView({ behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); });
+    render();
   })();
 
   // Scroll-driven process narrative: horizontal on desktop, vertical on mobile.
@@ -352,7 +542,7 @@
       event.preventDefault();
       var endpoint = form.getAttribute('action');
       if (!endpoint) {
-        status.textContent = '[INTEGRAÇÃO PENDENTE] O formulário está validado, mas ainda não envia dados.';
+        status.textContent = 'O envio online ainda não está disponível. Contacte-nos por email, telefone ou WhatsApp.';
         return;
       }
       if (!form.checkValidity()) { form.reportValidity(); return; }
@@ -362,7 +552,11 @@
       if (submitButton) submitButton.disabled = true;
       status.textContent = 'A enviar a sua mensagem…';
       try {
-        var response = await fetch(endpoint, { method:form.method || 'POST', body:new FormData(form), headers:{ Accept:'application/json' } });
+        var formData = new FormData(form);
+        var ddi = form.elements.ddi ? form.elements.ddi.value : '';
+        var phone = form.elements.telefone ? form.elements.telefone.value.trim() : '';
+        formData.set('telefone_completo', phone ? ddi + ' ' + phone : '');
+        var response = await fetch(endpoint, { method:form.method || 'POST', body:formData, headers:{ Accept:'application/json' } });
         if (!response.ok) throw new Error('Resposta inválida do servidor');
         form.reset();
         form.querySelectorAll('.is-filled').forEach(function(field){ field.classList.remove('is-filled'); });
@@ -381,9 +575,11 @@
   // Lift the floating contact action when the footer enters the viewport.
   (function(){
     var button = document.querySelector('.whatsapp-float');
+    var backToTop = document.querySelector('.back-to-top');
     var footer = document.getElementById('rodape');
     if (!button || !footer || !('IntersectionObserver' in window)) return;
     new IntersectionObserver(function(entries){
       button.classList.toggle('near-footer', entries[0].isIntersecting);
+      if (backToTop) backToTop.classList.toggle('near-footer', entries[0].isIntersecting);
     }, { threshold:.08 }).observe(footer);
   })();

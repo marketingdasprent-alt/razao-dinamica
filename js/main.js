@@ -500,11 +500,12 @@
     });
   })();
 
-  // Integration guard: keep the prototype honest until a real endpoint exists.
+  // Submit validated contact requests to the approved Google Apps Script endpoint.
   (function(){
     var form = document.getElementById('leadForm');
     var status = document.getElementById('formStatus');
     if (!form) return;
+    var isSubmitting = false;
     var honeypot = document.createElement('label');
     honeypot.className = 'form-honeypot';
     honeypot.setAttribute('aria-hidden', 'true');
@@ -538,34 +539,52 @@
       field.addEventListener('input', function(){ if (field.checkValidity()) updateError(); });
     });
     form.addEventListener('submit', async function(event){
-      if (form.elements.website && form.elements.website.value) { event.preventDefault(); return; }
       event.preventDefault();
+      if (isSubmitting || (form.elements.website && form.elements.website.value)) return;
       var endpoint = form.getAttribute('action');
-      if (!endpoint) {
-        status.textContent = 'O envio online ainda não está disponível. Contacte-nos por email, telefone ou WhatsApp.';
-        return;
-      }
       if (!form.checkValidity()) { form.reportValidity(); return; }
       var submitButton = form.querySelector('[type="submit"]');
+      var controller = new AbortController();
+      var timeout = window.setTimeout(function(){ controller.abort(); }, 15000);
+      function value(name){ return form.elements[name] ? form.elements[name].value.trim() : ''; }
+      var payload = {
+        nome:value('nome'),
+        apelido:value('apelido'),
+        email:value('email'),
+        empresa:value('empresa'),
+        ddi:value('ddi'),
+        telefone:value('telefone'),
+        servico:value('servico'),
+        mensagem:value('mensagem')
+      };
+      isSubmitting = true;
       form.classList.remove('is-success');
       form.classList.add('is-sending');
       if (submitButton) submitButton.disabled = true;
       status.textContent = 'A enviar a sua mensagem…';
       try {
-        var formData = new FormData(form);
-        var ddi = form.elements.ddi ? form.elements.ddi.value : '';
-        var phone = form.elements.telefone ? form.elements.telefone.value.trim() : '';
-        formData.set('telefone_completo', phone ? ddi + ' ' + phone : '');
-        var response = await fetch(endpoint, { method:form.method || 'POST', body:formData, headers:{ Accept:'application/json' } });
-        if (!response.ok) throw new Error('Resposta inválida do servidor');
+        var response = await fetch(endpoint, {
+          method:'POST',
+          // Apps Script does not answer JSON preflight requests; text/plain keeps the JSON body intact without OPTIONS.
+          headers:{ 'Content-Type':'text/plain;charset=UTF-8', Accept:'application/json' },
+          body:JSON.stringify(payload),
+          signal:controller.signal
+        });
+        var result = await response.json();
+        if (!response.ok || !result || result.success !== true) throw new Error('Submissão não confirmada');
         form.reset();
         form.querySelectorAll('.is-filled').forEach(function(field){ field.classList.remove('is-filled'); });
+        form.querySelectorAll('.is-error').forEach(function(field){ field.classList.remove('is-error'); });
+        form.querySelectorAll('[aria-invalid]').forEach(function(field){ field.setAttribute('aria-invalid', 'false'); });
+        form.querySelectorAll('.field-error').forEach(function(error){ error.textContent = ''; });
         form.classList.add('is-success');
         status.textContent = 'Mensagem enviada com sucesso. Entraremos em contacto brevemente.';
         if (window.RazaoDinamicaTracking) window.RazaoDinamicaTracking.trackLeadSent();
       } catch (error) {
-        status.textContent = 'Não foi possível enviar a mensagem. Tente novamente ou contacte-nos por telefone.';
+        status.textContent = 'Não foi possível enviar o contacto. Tente novamente dentro de alguns instantes.';
       } finally {
+        window.clearTimeout(timeout);
+        isSubmitting = false;
         form.classList.remove('is-sending');
         if (submitButton) submitButton.disabled = false;
       }

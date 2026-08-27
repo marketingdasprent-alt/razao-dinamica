@@ -650,7 +650,7 @@
   .form-wide{grid-column:1/-1;}
   .form-privacy-note{margin:22px 0;color:#53616a;font-size:13px;line-height:1.55;}
   .form-privacy-note a{color:var(--teal);text-decoration:underline;text-underline-offset:3px;}
-  .form-submit{border:0;cursor:pointer;}
+  .form-submit{display:flex;margin-inline:auto;border:0;cursor:pointer;}
   .form-submit:disabled{cursor:wait;filter:saturate(.5);}
   .form-status{min-height:22px;margin-top:13px;font-size:13px;color:var(--teal);}
   .legal-links{display:flex;flex-wrap:wrap;gap:12px 24px;padding:20px 0 8px;border-top:1px solid rgba(255,255,255,.13);}

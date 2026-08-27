@@ -28,7 +28,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./css/styles.css?v=11">
+<link rel="stylesheet" href="./css/styles.css?v=25">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -59,7 +59,7 @@
       <a href="#localizacoes">Contacto</a>
       <a href="#contacto" class="cta">Marcar reunião</a>
     </div>
-    <button class="burger" id="burgerBtn" aria-label="Abrir menu" aria-expanded="false" aria-controls="mobileNavPanel">
+    <button class="burger" id="burgerBtn" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="mobileNavPanel">
       <span></span><span></span><span></span>
     </button>
   </div>
@@ -269,6 +269,7 @@
       <h2 class="section-title">Por trás de cada relatório, uma equipa que conhece o seu negócio pelo nome.</h2>
     </div>
   </div>
+  <div class="people-carousel">
   <div class="people-grid">
     <div class="people-photo">
       <img src="assets/images/equipa-reuniao.jpg" srcset="assets/images/equipa-reuniao-600.webp 600w, assets/images/equipa-reuniao-900.webp 900w" sizes="100vw" width="900" height="598" alt="Equipa da Razão Dinâmica em reunião de trabalho" loading="lazy" decoding="async">
@@ -282,6 +283,13 @@
     </div>
     <div class="people-photo">
       <img src="assets/images/equipa-razao-dinamica.jpg" srcset="assets/images/equipa-razao-dinamica-600.webp 600w, assets/images/equipa-razao-dinamica-900.webp 900w" sizes="100vw" width="900" height="598" alt="Equipa da Razão Dinâmica" loading="lazy" decoding="async">
+    </div>
+  </div>
+    <button class="people-next" type="button" aria-label="Ver próxima imagem"><span aria-hidden="true">→</span></button>
+    <div class="people-dots" aria-label="Imagem atual">
+      <button class="is-active" type="button" aria-label="Ver imagem 1" aria-current="true"></button>
+      <button type="button" aria-label="Ver imagem 2"></button>
+      <button type="button" aria-label="Ver imagem 3"></button>
     </div>
   </div>
 </section>
@@ -426,11 +434,11 @@
         <label><span>Apelido *</span><input type="text" name="apelido" autocomplete="family-name" required></label>
         <label class="form-wide"><span>Email *</span><input type="email" name="email" autocomplete="email" required></label>
         <label class="form-wide"><span>Empresa</span><input type="text" name="empresa" autocomplete="organization"></label>
-        <div class="form-wide phone-field"><label><span>País / DDI</span><select name="ddi" aria-label="Código internacional do telefone"><option value="+351" selected>Portugal (+351)</option><option value="+55">Brasil (+55)</option><option value="+34">Espanha (+34)</option><option value="+33">França (+33)</option><option value="+44">Reino Unido (+44)</option><option value="+49">Alemanha (+49)</option><option value="+39">Itália (+39)</option><option value="+41">Suíça (+41)</option><option value="+352">Luxemburgo (+352)</option><option value="+244">Angola (+244)</option><option value="+238">Cabo Verde (+238)</option><option value="+258">Moçambique (+258)</option></select></label><label><span>Telefone</span><input type="tel" name="telefone" autocomplete="tel-national" inputmode="tel" placeholder="910 000 000"></label></div>
+        <label class="form-wide phone-field"><span>Telefone</span><input type="tel" id="phone" name="telefone" autocomplete="tel" inputmode="tel" aria-label="Número de telefone com indicativo internacional"><input type="hidden" name="ddi" value="+351"></label>
         <label class="form-wide"><span>Serviço de interesse</span><select name="servico" id="serviceSelect"><option value="">Selecione uma opção</option><option>Contabilidade</option><option>Fiscalidade</option><option>Consultoria de gestão</option><option>Planeamento financeiro</option><option>Auditoria interna</option><option>Ainda não sei</option></select></label>
         <label class="form-wide"><span>Mensagem</span><textarea name="mensagem" rows="5"></textarea></label>
       </div>
-      <label class="privacy-check"><input type="checkbox" name="privacidade" required><span>Li e aceito a <a href="privacidade.html">Política de Privacidade</a> e autorizo o tratamento dos meus dados para resposta a este pedido. *</span></label>
+      <p class="form-privacy-note">Os dados submetidos serão utilizados pela Razão Dinâmica para responder ao seu pedido, nos termos da nossa <a href="privacidade.html">Política de Privacidade</a>.</p>
       <button class="btn-primary form-submit" type="submit">Enviar pedido <span class="go">→</span></button>
       <p class="form-status" id="formStatus" role="status" aria-live="polite"></p>
     </form>
@@ -462,12 +470,12 @@
 <section class="cookie-banner" id="cookieBanner" aria-labelledby="cookieBannerTitle" aria-describedby="cookieBannerDescription" hidden>
   <div class="cookie-banner-copy">
     <span class="mono">PRIVACIDADE E COOKIES</span>
-    <h2 id="cookieBannerTitle">A sua escolha importa.</h2>
-    <p id="cookieBannerDescription">Utilizamos recursos necessários para o funcionamento do site. Os cookies de marketing permanecem desativados até recebermos a sua autorização. Consulte a nossa <a href="cookies.html">Política de Cookies</a>.</p>
+    <h2 id="cookieBannerTitle">Privacidade e cookies</h2>
+    <p id="cookieBannerDescription">Utilizamos cookies estritamente necessários ao funcionamento do site e, com o seu consentimento, tecnologias de marketing para medir campanhas através do Meta Pixel. Pode aceitar, recusar os não essenciais ou gerir as suas preferências. Consulte a nossa <a href="cookies.html">Política de Cookies</a>.</p>
   </div>
   <div class="cookie-banner-actions">
     <button class="cookie-action cookie-accept" type="button" data-cookie-accept>Aceitar todos</button>
-    <button class="cookie-action" type="button" data-cookie-reject>Rejeitar não essenciais</button>
+    <button class="cookie-action" type="button" data-cookie-reject>Recusar não essenciais</button>
     <button class="cookie-action cookie-manage" type="button" data-cookie-manage>Gerir preferências</button>
   </div>
 </section>
@@ -480,11 +488,11 @@
     <h2 id="cookiePreferencesTitle">Escolha como podemos utilizar cookies.</h2>
     <p id="cookiePreferencesDescription">Pode alterar esta decisão a qualquer momento através da opção “Gerir cookies” no rodapé.</p>
     <div class="cookie-category">
-      <div><h3>Cookies necessários</h3><p>Permitem guardar a sua preferência e assegurar funções essenciais do site.</p></div>
+      <div><h3>Necessários</h3><p>Permitem guardar a sua preferência e assegurar funções essenciais do site.</p></div>
       <label class="cookie-switch"><input type="checkbox" checked disabled><span>Sempre ativos</span></label>
     </div>
     <div class="cookie-category">
-      <div><h3>Cookies de marketing</h3><p>Permitem ativar o Meta Pixel para medir visitas e contactos depois do seu consentimento.</p></div>
+      <div><h3>Marketing</h3><p>Permite ativar o Meta Pixel para medir campanhas, atribuir conversões e apoiar a otimização de publicidade. Estes cookies/tecnologias só são usados com o seu consentimento.</p></div>
       <label class="cookie-switch"><input type="checkbox" id="marketingConsent"><span>Permitir marketing</span></label>
     </div>
     <div class="cookie-preferences-actions">
@@ -517,7 +525,7 @@
   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.39 1.26 4.81L2 22l5.4-1.42a9.9 9.9 0 0 0 4.64 1.18h.01c5.46 0 9.9-4.45 9.9-9.91C21.96 6.45 17.5 2 12.04 2zm5.79 14.1c-.24.68-1.4 1.3-1.93 1.38-.5.08-1.12.11-1.8-.11-.42-.13-.96-.31-1.65-.6-2.9-1.25-4.8-4.17-4.94-4.36-.15-.19-1.18-1.57-1.18-3 0-1.42.75-2.12 1.01-2.41.27-.29.58-.36.78-.36.19 0 .39 0 .56.01.18.01.42-.07.65.5.24.58.83 2 .9 2.15.07.15.11.32.02.51-.09.19-.14.31-.27.48-.14.17-.29.37-.41.5-.14.15-.28.31-.12.6.16.29.71 1.17 1.53 1.9 1.05.94 1.94 1.23 2.23 1.37.29.14.46.12.63-.07.17-.19.72-.84.92-1.13.19-.29.38-.24.65-.14.26.1 1.67.79 1.96.93.29.14.48.21.55.33.07.12.07.68-.17 1.36z"/></svg>
 </a>
 
-<script type="module" src="./js/main.js"></script>
+<script type="module" src="./js/main.js?v=25"></script>
 
 </body>
 </html>

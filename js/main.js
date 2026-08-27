@@ -1,3 +1,7 @@
+import intlTelInput from 'intl-tel-input';
+import pt from 'intl-tel-input/i18n/pt';
+import 'intl-tel-input/styles';
+
 (function(){
   // Consent-gated Meta Pixel. A future CMP must call
   // window.RazaoDinamicaTracking.enableMarketing() only after valid marketing consent.
@@ -151,20 +155,19 @@
     function setMenu(open, returnFocus){
       nav.classList.toggle('open', open);
       document.body.classList.toggle('nav-menu-open', open);
+      document.documentElement.classList.toggle('nav-menu-open', open);
       burger.setAttribute('aria-expanded', open ? 'true' : 'false');
       burger.setAttribute('aria-label', open ? 'Fechar menu' : 'Abrir menu');
       panel.setAttribute('aria-hidden', open ? 'false' : 'true');
-      if (open) {
-        var firstLink = panel.querySelector('a');
-        if (firstLink) window.setTimeout(function(){ firstLink.focus(); }, 180);
-      } else if (returnFocus) {
+      if (!open && returnFocus) {
         burger.focus();
       }
     }
 
     panel.setAttribute('aria-hidden', window.innerWidth <= 860 ? 'true' : 'false');
 
-    burger.addEventListener('click', function(){
+    burger.addEventListener('click', function(event){
+      event.preventDefault();
       setMenu(!nav.classList.contains('open'), false);
     });
 
@@ -506,13 +509,54 @@
     var status = document.getElementById('formStatus');
     if (!form) return;
     var isSubmitting = false;
+    var phoneInput = form.elements.telefone;
+    var ddiInput = form.elements.ddi;
+    var phonePlugin = null;
+    function syncPhoneCountry(){
+      if (!phonePlugin || !ddiInput) return;
+      var country = phonePlugin.getSelectedCountryData();
+      ddiInput.value = country && country.dialCode ? '+' + country.dialCode : '';
+    }
+    function validatePhone(){
+      if (!phoneInput || !phonePlugin) return true;
+      phoneInput.setCustomValidity('');
+      if (!phoneInput.value.trim()) return true;
+      if (phonePlugin.isValidNumber() !== true) {
+        phoneInput.setCustomValidity('Introduza um número de telefone válido para o país selecionado.');
+        return false;
+      }
+      return true;
+    }
+    function nationalPhoneValue(){
+      if (!phoneInput || !phoneInput.value.trim()) return '';
+      var international = phonePlugin ? phonePlugin.getNumber() : phoneInput.value;
+      var digits = international.replace(/\D/g, '');
+      var dialDigits = ddiInput ? ddiInput.value.replace(/\D/g, '') : '';
+      return dialDigits && digits.indexOf(dialDigits) === 0 ? digits.slice(dialDigits.length) : digits;
+    }
+    if (phoneInput && ddiInput) {
+      phonePlugin = intlTelInput(phoneInput, {
+        initialCountry:'pt',
+        separateDialCode:true,
+        nationalMode:false,
+        formatAsYouType:false,
+        countrySearch:true,
+        validationNumberTypes:null,
+        i18n:pt,
+        loadUtils:function(){ return import('intl-tel-input/utils'); }
+      });
+      syncPhoneCountry();
+      phoneInput.addEventListener('countrychange', function(){ syncPhoneCountry(); validatePhone(); });
+      phoneInput.addEventListener('blur', validatePhone);
+      phoneInput.addEventListener('input', function(){ phoneInput.setCustomValidity(''); });
+    }
     var honeypot = document.createElement('label');
     honeypot.className = 'form-honeypot';
     honeypot.setAttribute('aria-hidden', 'true');
     honeypot.innerHTML = '<span>Website</span><input type="text" name="website" tabindex="-1" autocomplete="off">';
     form.insertBefore(honeypot, form.firstChild);
     form.querySelectorAll('input, select, textarea').forEach(function(field){
-      if (field.name === 'website') return;
+      if (field.name === 'website' || field.type === 'hidden' || !field.name) return;
       var label = field.closest('label');
       var error = document.createElement('span');
       var errorId = 'error-' + (field.name || 'field');
@@ -542,6 +586,9 @@
       event.preventDefault();
       if (isSubmitting || (form.elements.website && form.elements.website.value)) return;
       var endpoint = form.getAttribute('action');
+      if (phonePlugin && phoneInput.value.trim()) await phonePlugin.promise;
+      syncPhoneCountry();
+      validatePhone();
       if (!form.checkValidity()) { form.reportValidity(); return; }
       var submitButton = form.querySelector('[type="submit"]');
       var controller = new AbortController();
@@ -553,7 +600,7 @@
         email:value('email'),
         empresa:value('empresa'),
         ddi:value('ddi'),
-        telefone:value('telefone'),
+        telefone:nationalPhoneValue(),
         servico:value('servico'),
         mensagem:value('mensagem')
       };
@@ -573,6 +620,8 @@
         var result = await response.json();
         if (!response.ok || !result || result.success !== true) throw new Error('Submissão não confirmada');
         form.reset();
+        if (phonePlugin) phonePlugin.setCountry('pt');
+        syncPhoneCountry();
         form.querySelectorAll('.is-filled').forEach(function(field){ field.classList.remove('is-filled'); });
         form.querySelectorAll('.is-error').forEach(function(field){ field.classList.remove('is-error'); });
         form.querySelectorAll('[aria-invalid]').forEach(function(field){ field.setAttribute('aria-invalid', 'false'); });
@@ -589,6 +638,73 @@
         if (submitButton) submitButton.disabled = false;
       }
     });
+  })();
+
+  // Auto-advance the People gallery on mobile while preserving native swipe.
+  (function(){
+    var carousel = document.querySelector('.people-grid');
+    var slides = carousel ? Array.prototype.slice.call(carousel.querySelectorAll('.people-photo')) : [];
+    var nextButton = document.querySelector('.people-next');
+    var dots = Array.prototype.slice.call(document.querySelectorAll('.people-dots button'));
+    var mobile = window.matchMedia('(max-width: 540px)');
+    var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (!carousel || slides.length < 2) return;
+    var current = 0;
+    var timer = null;
+    var resumeTimer = null;
+
+    function stop(){
+      if (timer) window.clearInterval(timer);
+      timer = null;
+    }
+    function goTo(index, smooth){
+      current = (index + slides.length) % slides.length;
+      carousel.scrollTo({ left:slides[current].offsetLeft, behavior:smooth ? 'smooth' : 'auto' });
+      updateIndicators();
+    }
+    function updateIndicators(){
+      dots.forEach(function(dot, index){
+        var active = index === current;
+        dot.classList.toggle('is-active', active);
+        if (active) dot.setAttribute('aria-current', 'true');
+        else dot.removeAttribute('aria-current');
+      });
+    }
+    function start(){
+      stop();
+      if (!mobile.matches || reducedMotion.matches || document.hidden) return;
+      timer = window.setInterval(function(){ goTo(current + 1, true); }, 4500);
+    }
+    function pauseAfterInteraction(){
+      stop();
+      if (resumeTimer) window.clearTimeout(resumeTimer);
+      resumeTimer = window.setTimeout(start, 8000);
+    }
+    function syncCurrent(){
+      if (!mobile.matches || !carousel.clientWidth) return;
+      current = Math.round(carousel.scrollLeft / carousel.clientWidth) % slides.length;
+      updateIndicators();
+    }
+    function updateMode(){
+      stop();
+      if (!mobile.matches) {
+        carousel.scrollLeft = 0;
+        current = 0;
+        return;
+      }
+      goTo(current, false);
+      start();
+    }
+
+    carousel.addEventListener('pointerdown', pauseAfterInteraction, { passive:true });
+    carousel.addEventListener('touchstart', pauseAfterInteraction, { passive:true });
+    carousel.addEventListener('scroll', syncCurrent, { passive:true });
+    if (nextButton) nextButton.addEventListener('click', function(){ goTo(current + 1, true); pauseAfterInteraction(); });
+    dots.forEach(function(dot, index){ dot.addEventListener('click', function(){ goTo(index, true); pauseAfterInteraction(); }); });
+    document.addEventListener('visibilitychange', start);
+    mobile.addEventListener('change', updateMode);
+    reducedMotion.addEventListener('change', updateMode);
+    updateMode();
   })();
 
   // Lift the floating contact action when the footer enters the viewport.

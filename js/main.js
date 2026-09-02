@@ -542,6 +542,37 @@ import 'intl-tel-input/styles';
     var status = document.getElementById('formStatus');
     if (!form) return;
     var isSubmitting = false;
+    var thankYouModal = document.getElementById('leadThankYou');
+    var thankYouPreviousFocus = null;
+    function openThankYou(){
+      if (!thankYouModal) return;
+      thankYouPreviousFocus = document.activeElement;
+      thankYouModal.hidden = false;
+      document.body.classList.add('modal-open');
+      window.requestAnimationFrame(function(){
+        thankYouModal.classList.add('is-open');
+        var closeButton = thankYouModal.querySelector('.service-modal-close');
+        if (closeButton) closeButton.focus();
+      });
+    }
+    function closeThankYou(returnFocus){
+      if (!thankYouModal) return;
+      thankYouModal.classList.remove('is-open');
+      document.body.classList.remove('modal-open');
+      window.setTimeout(function(){
+        thankYouModal.hidden = true;
+        if (returnFocus && thankYouPreviousFocus) thankYouPreviousFocus.focus();
+      }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 220);
+    }
+    if (thankYouModal) {
+      thankYouModal.querySelectorAll('[data-thankyou-close]').forEach(function(item){
+        item.addEventListener('click', function(){ closeThankYou(true); });
+      });
+      document.addEventListener('keydown', function(event){
+        if (thankYouModal.hidden) return;
+        if (event.key === 'Escape') { event.preventDefault(); closeThankYou(true); }
+      });
+    }
     var phoneInput = form.elements.telefone;
     var ddiInput = form.elements.ddi;
     var phonePlugin = null;
@@ -667,6 +698,7 @@ import 'intl-tel-input/styles';
             phone:(payload.ddi || '') + (payload.telefone || '')
           });
         }
+        openThankYou();
       } catch (error) {
         status.textContent = 'Não foi possível enviar o contacto. Tente novamente dentro de alguns instantes.';
       } finally {
@@ -676,6 +708,35 @@ import 'intl-tel-input/styles';
         if (submitButton) submitButton.disabled = false;
       }
     });
+  })();
+
+  // Mobile carousel for the inline hero stats band (desktop keeps all three visible side by side).
+  (function(){
+    var stats = Array.prototype.slice.call(document.querySelectorAll('.hero-inline-stats .lp-stat'));
+    if (stats.length < 2) return;
+    var mobile = window.matchMedia('(max-width: 540px)');
+    var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    var index = 0;
+    var timer = null;
+    function show(i){
+      stats.forEach(function(stat, idx){ stat.classList.toggle('is-active', idx === i); });
+    }
+    function stop(){
+      if (timer) window.clearInterval(timer);
+      timer = null;
+    }
+    function start(){
+      stop();
+      if (!mobile.matches || reducedMotion.matches) { show(0); return; }
+      show(index);
+      timer = window.setInterval(function(){
+        index = (index + 1) % stats.length;
+        show(index);
+      }, 2600);
+    }
+    mobile.addEventListener('change', start);
+    reducedMotion.addEventListener('change', start);
+    start();
   })();
 
   // Auto-advance the People gallery on mobile while preserving native swipe.

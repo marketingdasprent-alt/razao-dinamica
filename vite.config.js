@@ -21,7 +21,8 @@ export default defineConfig({
         notFound: resolve(process.cwd(), '404.html'),
         cookies: resolve(process.cwd(), 'cookies.html'),
         privacidade: resolve(process.cwd(), 'privacidade.html'),
-        informacaoLegal: resolve(process.cwd(), 'informacao-legal.html')
+        informacaoLegal: resolve(process.cwd(), 'informacao-legal.html'),
+        landingPage: resolve(process.cwd(), 'landing-page/index.html')
       }
     }
   }

@@ -3,8 +3,8 @@ import pt from 'intl-tel-input/i18n/pt';
 import 'intl-tel-input/styles';
 
 (function(){
-  // Consent-gated Meta Pixel. A future CMP must call
-  // window.RazaoDinamicaTracking.enableMarketing() only after valid marketing consent.
+  // Consent-gated Meta Pixel + Conversions API. The same event ID is used on
+  // both transports so Meta can deduplicate browser and server events.
   (function(){
     var pixelId = '28161293560174741';
     var enabled = false;
@@ -22,12 +22,42 @@ import 'intl-tel-input/styles';
       return fbq;
     }
 
+    function eventId(eventName){
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') return eventName + '_' + window.crypto.randomUUID();
+      return eventName + '_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+    }
+
+    function cookieValue(name){
+      var prefix = name + '=';
+      var item = document.cookie.split(';').map(function(value){ return value.trim(); }).find(function(value){ return value.indexOf(prefix) === 0; });
+      return item ? decodeURIComponent(item.slice(prefix.length)) : '';
+    }
+
+    function sendServerEvent(eventName, id, userData){
+      var payload = {
+        event_name:eventName,
+        event_id:id,
+        event_source_url:window.location.href,
+        marketing_consent:true,
+        fbp:cookieValue('_fbp'),
+        fbc:cookieValue('_fbc')
+      };
+      if (userData && userData.email) payload.email = userData.email;
+      if (userData && userData.phone) payload.phone = userData.phone;
+      fetch('/api/meta-conversions', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', Accept:'application/json' },
+        body:JSON.stringify(payload),
+        keepalive:true
+      }).catch(function(){});
+    }
+
     function enableMarketing(){
       if (enabled || loading) return;
       if (initialized && window.fbq) {
         window.fbq('consent', 'grant');
-        window.fbq('track', 'PageView');
         enabled = true;
+        track('PageView');
         return;
       }
       loading = true;
@@ -40,14 +70,17 @@ import 'intl-tel-input/styles';
         initialized = true;
         loading = false;
         fbq('init', pixelId);
-        fbq('track', 'PageView');
+        track('PageView');
       };
       script.onerror = function(){ loading = false; };
       document.head.appendChild(script);
     }
 
-    function track(eventName){
-      if (enabled && window.fbq) window.fbq('track', eventName);
+    function track(eventName, userData){
+      if (!enabled || !window.fbq) return;
+      var id = eventId(eventName);
+      window.fbq('track', eventName, {}, { eventID:id });
+      sendServerEvent(eventName, id, userData);
     }
 
     function revokeMarketing(){
@@ -59,7 +92,7 @@ import 'intl-tel-input/styles';
       enableMarketing: enableMarketing,
       revokeMarketing: revokeMarketing,
       trackWhatsAppClick: function(){ track('Contact'); },
-      trackLeadSent: function(){ track('Lead'); }
+      trackLeadSent: function(userData){ track('Lead', userData); }
     };
 
     document.querySelectorAll('[data-meta-event="whatsapp"]').forEach(function(link){
@@ -628,7 +661,12 @@ import 'intl-tel-input/styles';
         form.querySelectorAll('.field-error').forEach(function(error){ error.textContent = ''; });
         form.classList.add('is-success');
         status.textContent = 'Mensagem enviada com sucesso. Entraremos em contacto brevemente.';
-        if (window.RazaoDinamicaTracking) window.RazaoDinamicaTracking.trackLeadSent();
+        if (window.RazaoDinamicaTracking) {
+          window.RazaoDinamicaTracking.trackLeadSent({
+            email:payload.email,
+            phone:(payload.ddi || '') + (payload.telefone || '')
+          });
+        }
       } catch (error) {
         status.textContent = 'Não foi possível enviar o contacto. Tente novamente dentro de alguns instantes.';
       } finally {

@@ -147,7 +147,7 @@ function Consent(){
   return <>
     <section className="cookie-banner" id="cookieBanner" aria-labelledby="cookieBannerTitle" aria-describedby="cookieBannerDescription" hidden>
       <div className="cookie-banner-copy"><span className="mono">PRIVACIDADE E COOKIES</span><h2 id="cookieBannerTitle">Privacidade e cookies</h2><p id="cookieBannerDescription">Utilizamos cookies necessários e, com o seu consentimento, tecnologias de marketing para medir campanhas através do Meta Pixel. Consulte a nossa <a href="../cookies.html">Política de Cookies</a>.</p></div>
-      <div className="cookie-banner-actions"><button className="cookie-action cookie-accept" type="button" data-cookie-accept>Aceitar todos</button><button className="cookie-action" type="button" data-cookie-reject>Recusar não essenciais</button><button className="cookie-action cookie-manage" type="button" data-cookie-manage>Gerir preferências</button></div>
+      <div className="cookie-banner-actions"><button className="cookie-action cookie-accept" type="button" data-cookie-accept>Aceitar e continuar</button><button className="cookie-action cookie-manage" type="button" data-cookie-manage>Gerir opções</button><button className="cookie-action" type="button" data-cookie-reject>Recusar</button></div>
     </section>
     <div className="cookie-preferences" id="cookiePreferences" hidden>
       <div className="cookie-preferences-backdrop" data-cookie-close></div>

@@ -815,7 +815,6 @@
   .cookie-action:hover,.cookie-action:focus-visible{background:rgba(203,169,104,.15);border-color:var(--brass);}
   .cookie-action.cookie-accept{background:var(--brass);color:var(--ink);}
   .cookie-action.cookie-accept:hover,.cookie-action.cookie-accept:focus-visible{background:#dfbd7b;}
-  .cookie-manage{grid-column:1/-1;}
   .cookie-preferences{position:fixed;inset:0;z-index:110;display:grid;place-items:center;padding:24px;opacity:0;transition:opacity .22s ease;}
   .cookie-preferences.is-open{opacity:1;}
   .cookie-preferences-backdrop{position:absolute;inset:0;background:rgba(4,15,24,.8);backdrop-filter:blur(5px);}
@@ -940,9 +939,13 @@
     .phone-field .iti__dropdown-content{max-width:calc(100vw - 64px);}
     .service-modal{align-items:end;padding:0;}
     .service-modal-panel{width:100%;max-height:88vh;padding:32px 22px 28px;border-top-width:4px;transform:translateY(100%);}
-    .cookie-banner{left:10px;right:10px;bottom:10px;padding:20px 16px;max-height:calc(100vh - 20px);overflow:auto;}
-    .cookie-banner-actions{grid-template-columns:1fr;}
-    .cookie-manage{grid-column:auto;}
+    .cookie-banner{left:0;right:0;bottom:0;max-width:none;margin-inline:0;border-radius:20px 20px 0 0;border-left:0;border-right:0;border-bottom:0;padding:14px 20px calc(24px + env(safe-area-inset-bottom));max-height:min(86vh,calc(100vh - 12px));overflow:auto;box-shadow:0 -18px 60px rgba(0,0,0,.45);}
+    .cookie-banner::before{content:"";display:block;width:40px;height:4px;margin:0 auto 16px;border-radius:999px;background:rgba(203,169,104,.55);}
+    .cookie-banner h2{font-size:1.35rem;}
+    .cookie-banner p{font-size:14px;}
+    .cookie-banner-actions{grid-template-columns:1fr;gap:10px;}
+    .cookie-action{min-height:50px;font-size:14px;}
+    .cookie-action.cookie-accept{min-height:56px;font-size:15px;}
     .cookie-preferences{align-items:end;padding:0;}
     .cookie-preferences-panel{width:100%;max-height:90vh;padding:32px 20px 26px;border-top-width:4px;transform:translateY(100%);}
     .cookie-category{grid-template-columns:1fr;gap:14px;}

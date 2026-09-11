@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import { format, formatDistanceToNow } from 'date-fns'
 import { pt } from 'date-fns/locale'
+import { useAuth } from '@/hooks/useAuth'
+import { mudarEstado } from '@/lib/leadActions'
+import Responsavel from './Responsavel'
 import { supabase } from '@/lib/supabase'
-import { ESTADOS, SERVICOS, type Estado, type Lead, type Nota } from '@/lib/types'
-import { notifyLeadsChanged } from '@/hooks/useLeadSheet'
+import { ESTADOS, SERVICOS, type Estado, type Lead, type Nota, type Perfil } from '@/lib/types'
+import { notifyLeadsChanged, type LeadSheetTab } from '@/hooks/useLeadSheet'
 import { useToast } from '@/hooks/useToast'
 import EstadoBadge from './EstadoBadge'
 import Avatar from './Avatar'
@@ -11,21 +14,31 @@ import WhatsAppChat from './WhatsAppChat'
 
 interface Props {
   lead: Lead
+  initialTab?: LeadSheetTab
   onClose: () => void
 }
 
-type Tab = 'detalhes' | 'whatsapp'
+type Tab = LeadSheetTab
 
-export default function LeadSheet({ lead, onClose }: Props) {
+export default function LeadSheet({ lead, initialTab = 'detalhes', onClose }: Props) {
   const toast = useToast()
-  const [tab, setTab] = useState<Tab>('detalhes')
+  const { session, isAdmin } = useAuth()
+  const [responsaveis, setResponsaveis] = useState<Perfil[]>([])
+  const [novoResponsavel, setNovoResponsavel] = useState(lead.atribuido_a ?? '')
+  const [changing, setChanging] = useState(false)
+  const [tab, setTab] = useState<Tab>(initialTab)
   const [form, setForm] = useState(lead)
   const [saving, setSaving] = useState(false)
   const [notas, setNotas] = useState<Nota[]>([])
   const [novaNota, setNovaNota] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  useEffect(() => { setForm(lead) }, [lead])
+  const canEdit = isAdmin || form.atribuido_a === session?.user.id
+  useEffect(() => { setForm(lead); setNovoResponsavel(lead.atribuido_a ?? '') }, [lead])
+  useEffect(() => {
+    if (isAdmin) supabase.from('perfis').select('*').order('nome').then(({ data }) => setResponsaveis((data as Perfil[]) ?? []))
+  }, [isAdmin])
+  useEffect(() => { setTab(initialTab) }, [lead.id, initialTab])
 
   useEffect(() => {
     supabase
@@ -41,8 +54,9 @@ export default function LeadSheet({ lead, onClose }: Props) {
   }
 
   async function handleSave() {
+    if (!canEdit || saving) return
     setSaving(true)
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('leads')
       .update({
         nome: form.nome,
@@ -53,29 +67,40 @@ export default function LeadSheet({ lead, onClose }: Props) {
         telefone: form.telefone,
         servico: form.servico,
         mensagem: form.mensagem,
-        estado: form.estado,
         atualizado_em: new Date().toISOString(),
       })
-      .eq('id', lead.id)
+      .eq('id', lead.id).eq('atualizado_em', form.atualizado_em).select().single()
     setSaving(false)
-    if (error) { toast.show('Não foi possível guardar.', 'error'); return }
+    if (error || !data) { toast.show('O lead mudou ou não pode ser editado. Atualize a ficha.', 'error'); notifyLeadsChanged(); onClose(); return }
+    setForm(data as Lead)
     toast.show('Lead atualizado.')
     notifyLeadsChanged()
   }
 
   async function handleEstadoChange(estado: Estado) {
-    set('estado', estado)
-    const { error } = await supabase
-      .from('leads')
-      .update({ estado, atualizado_em: new Date().toISOString() })
-      .eq('id', lead.id)
-    if (error) { toast.show('Não foi possível mudar o estado.', 'error'); return }
+    if (changing) return
+    setChanging(true)
+    try { setForm(await mudarEstado(form, estado)); notifyLeadsChanged() }
+    catch (error) { toast.show(error instanceof Error ? error.message : 'Não foi possível mudar o estado.', 'error'); notifyLeadsChanged(); onClose() }
+    finally { setChanging(false) }
+  }
+
+  async function handleAtribuir() {
+    if (!isAdmin || changing) return
+    setChanging(true)
+    const { data, error } = await supabase.rpc('atribuir_lead', {
+      p_id: form.id, p_responsavel: novoResponsavel || null, p_versao: form.atualizado_em,
+    })
+    setChanging(false)
+    if (error || !data) { toast.show(error?.message || 'Não foi possível atribuir.', 'error'); notifyLeadsChanged(); onClose(); return }
+    setForm(data as Lead)
+    toast.show(novoResponsavel ? 'Responsável atualizado.' : 'Lead devolvido à fila comum.')
     notifyLeadsChanged()
   }
 
   async function handleAddNota() {
     const corpo = novaNota.trim()
-    if (!corpo) return
+    if (!corpo || !canEdit) return
     const { data, error } = await supabase.from('notas').insert({ lead_id: lead.id, corpo }).select().single()
     if (error) { toast.show('Não foi possível adicionar a nota.', 'error'); return }
     setNotas((prev) => [data as Nota, ...prev])
@@ -83,8 +108,9 @@ export default function LeadSheet({ lead, onClose }: Props) {
   }
 
   async function handleDelete() {
-    const { error } = await supabase.from('leads').delete().eq('id', lead.id)
-    if (error) { toast.show('Não foi possível apagar.', 'error'); return }
+    if (!isAdmin) return
+    const { data, error } = await supabase.from('leads').delete().eq('id', lead.id).select('id').single()
+    if (error || !data) { toast.show('Não foi possível apagar.', 'error'); return }
     toast.show('Lead apagado.')
     notifyLeadsChanged()
     onClose()
@@ -113,7 +139,7 @@ export default function LeadSheet({ lead, onClose }: Props) {
 
         {tab === 'whatsapp' && (
           <div className="h-[calc(100%-118px)]">
-            <WhatsAppChat lead={form} />
+            <WhatsAppChat lead={form} readOnly={!canEdit} />
           </div>
         )}
 
@@ -136,9 +162,23 @@ export default function LeadSheet({ lead, onClose }: Props) {
         )}
 
         {tab === 'detalhes' && <div className="p-5 space-y-5">
+          <div className="rounded-lg bg-sand p-3 space-y-2">
+            <Responsavel lead={form} />
+            {isAdmin && <>
+              <label className="block text-xs text-navy/60">Responsável
+                <select aria-label="Responsável" value={novoResponsavel} onChange={e => setNovoResponsavel(e.target.value)} className="w-full mt-1 border rounded-lg p-2 text-sm">
+                  <option value="">Fila comum (Novo)</option>
+                  {responsaveis.map(p => <option key={p.id} value={p.id} disabled={!p.ativo}>{p.nome}{!p.ativo ? ' (desativado)' : ''}</option>)}
+                </select>
+              </label>
+              <button disabled={changing || (novoResponsavel === (form.atribuido_a ?? '') && form.estado === 'Novo')} onClick={handleAtribuir} className="text-sm text-teal underline disabled:opacity-40">{novoResponsavel ? 'Guardar responsável' : 'Devolver à fila comum'}</button>
+            </>}
+            {!canEdit && <p className="text-xs text-navy/60">Mude o estado para Contactado para assumir este lead e poder editar, adicionar notas e escrever mensagens.</p>}
+          </div>
           <div>
             <label className="block text-xs font-medium text-navy/60 mb-1">Estado</label>
             <select
+              disabled={changing || (isAdmin && !form.atribuido_a)}
               value={form.estado}
               onChange={(e) => handleEstadoChange(e.target.value as Estado)}
               className="w-full rounded-lg border border-navy/15 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold"
@@ -147,6 +187,7 @@ export default function LeadSheet({ lead, onClose }: Props) {
             </select>
           </div>
 
+          <fieldset disabled={!canEdit || saving} className="space-y-5 disabled:opacity-60">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Nome" value={form.nome} onChange={(v) => set('nome', v)} />
             <Field label="Apelido" value={form.apelido ?? ''} onChange={(v) => set('apelido', v)} />
@@ -179,7 +220,10 @@ export default function LeadSheet({ lead, onClose }: Props) {
           </div>
 
           <div className="flex items-center justify-between text-[11px] text-navy/40 font-mono">
-            <span>Origem: {lead.origem}</span>
+            <span>
+              Origem: {lead.origem}
+              {lead.device_type && ` · ${lead.device_type === 'mobile' ? 'Telemóvel' : 'Computador'}`}
+            </span>
             <span>Criado: {format(new Date(lead.criado_em), 'dd/MM/yyyy HH:mm')}</span>
           </div>
 
@@ -219,7 +263,8 @@ export default function LeadSheet({ lead, onClose }: Props) {
             </div>
           </div>
 
-          <div className="border-t border-navy/10 pt-5">
+          </fieldset>
+          {isAdmin && <div className="border-t border-navy/10 pt-5">
             {!confirmDelete ? (
               <button onClick={() => setConfirmDelete(true)} className="text-xs text-red-500 hover:underline">
                 Apagar lead
@@ -231,7 +276,7 @@ export default function LeadSheet({ lead, onClose }: Props) {
                 <button onClick={() => setConfirmDelete(false)} className="text-xs text-navy/50 hover:underline">Cancelar</button>
               </div>
             )}
-          </div>
+          </div>}
         </div>}
       </div>
     </div>

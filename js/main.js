@@ -7,6 +7,12 @@ import 'intl-tel-input/styles';
 var CRM_LEADS_ENDPOINT = 'https://gnrvehnisngrqttlkdts.supabase.co/rest/v1/leads';
 var CRM_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImducnZlaG5pc25ncnF0dGxrZHRzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNDI4ODYsImV4cCI6MjEwNDYxODg4Nn0.WycUgjVxRrhAUP4mlCnGnuroZ_2QZtCTXBBFsXhbvM8';
 
+function crmDeviceType(){
+  var uaData = window.navigator.userAgentData;
+  if (uaData && typeof uaData.mobile === 'boolean') return uaData.mobile ? 'mobile' : 'desktop';
+  return /Mobi|Android|iPhone|iPad|iPod/i.test(window.navigator.userAgent) ? 'mobile' : 'desktop';
+}
+
 (function(){
   // Consent-gated Meta Pixel + Conversions API. The same event ID is used on
   // both transports so Meta can deduplicate browser and server events.
@@ -673,7 +679,8 @@ var CRM_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
         servico:value('servico') || null,
         mensagem:value('mensagem') || null,
         consentimento: form.elements.consentimento ? value('consentimento') === 'Aceito' : null,
-        origem:origem
+        origem:origem,
+        device_type:crmDeviceType()
       };
       isSubmitting = true;
       form.classList.remove('is-success');

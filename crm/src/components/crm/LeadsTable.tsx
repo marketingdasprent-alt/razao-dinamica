@@ -1,3 +1,4 @@
+import Responsavel from './Responsavel'
 import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { ESTADOS, SERVICOS, type Lead } from '@/lib/types'
@@ -100,7 +101,7 @@ export default function LeadsTable({ leads, onSelect }: Props) {
                 <td className="px-4 py-2.5">
                   <div className="flex items-center gap-2.5">
                     <Avatar nome={lead.nome} apelido={lead.apelido} size={28} />
-                    <span className="font-medium text-navy">{lead.nome} {lead.apelido ?? ''}</span>
+                    <div><span className="font-medium text-navy">{lead.nome} {lead.apelido ?? ''}</span><div><Responsavel lead={lead} /></div></div>
                   </div>
                 </td>
                 <td className="px-4 py-2.5 text-navy/70">{lead.empresa ?? '—'}</td>

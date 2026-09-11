@@ -24,7 +24,7 @@ export default function CommandPalette({ onOpenLead }: { onOpenLead: (lead: Lead
 
   useEffect(() => {
     if (!open) return
-    supabase.from('leads').select('*').order('criado_em', { ascending: false }).limit(200).then(({ data }) => {
+    supabase.from('leads').select('*, responsavel:perfis!leads_atribuido_a_fkey(nome)').order('criado_em', { ascending: false }).limit(200).then(({ data }) => {
       setLeads((data as Lead[]) ?? [])
     })
   }, [open])

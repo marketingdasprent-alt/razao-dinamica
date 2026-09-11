@@ -19,6 +19,9 @@ export const SERVICOS = [
 ] as const
 
 export interface Lead {
+  responsavel?: { nome: string } | null
+  atribuido_a: string | null
+  atribuido_em: string | null
   id: string
   nome: string
   apelido: string | null
@@ -30,6 +33,7 @@ export interface Lead {
   mensagem: string | null
   consentimento: boolean | null
   origem: string
+  device_type: 'mobile' | 'desktop' | null
   estado: Estado
   criado_em: string
   atualizado_em: string
@@ -50,5 +54,28 @@ export interface MensagemWhatsApp {
   direcao: 'entrada' | 'saida'
   corpo: string
   estado: MensagemEstado
+  criado_em: string
+}
+
+export type AcaoEvento = 'apagado' | 'atribuido' | 'reatribuido' | 'devolvido'
+
+export interface Perfil {
+  exigir_troca_senha: boolean
+  id: string
+  nome: string
+  email: string
+  papel: 'admin' | 'gestor'
+  ativo: boolean
+  criado_em: string
+}
+
+export interface EventoLead {
+  id: string
+  lead_id: string | null
+  lead_nome: string | null
+  lead_email: string | null
+  acao: AcaoEvento
+  realizado_por: string | null
+  realizado_por_email: string | null
   criado_em: string
 }

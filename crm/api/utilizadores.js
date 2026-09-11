@@ -7,15 +7,20 @@ export function createHandler({ env = process.env, client = createClient } = {})
       res.setHeader('Allow', 'POST, PATCH')
       return res.status(405).json({ error: 'Método não permitido.' })
     }
-    const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRM_SITE_URL } = env
+    const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRM_SITE_URL, VERCEL_URL } = env
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !CRM_SITE_URL) {
       return res.status(503).json({ error: 'A gestão de contas ainda não foi configurada.' })
     }
     const token = /^Bearer (\S+)$/i.exec(req.headers.authorization || '')?.[1]
     if (!token) return res.status(401).json({ error: 'Inicie sessão novamente.' })
     try {
-      const origin = new URL(CRM_SITE_URL).origin
-      if (req.headers.origin && req.headers.origin !== origin) {
+      // Aceita o domínio configurado (produção/domínio próprio) e também o
+      // URL automático que a Vercel atribui a este deployment específico —
+      // assim cada preview funciona sem precisar reconfigurar CRM_SITE_URL
+      // a cada novo link gerado.
+      const allowedOrigins = new Set([new URL(CRM_SITE_URL).origin])
+      if (VERCEL_URL) allowedOrigins.add('https://' + VERCEL_URL)
+      if (req.headers.origin && !allowedOrigins.has(req.headers.origin)) {
         return res.status(403).json({ error: 'Origem não permitida.' })
       }
       const admin = client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {

@@ -3,7 +3,7 @@ import { format, formatDistanceToNow } from 'date-fns'
 import { pt } from 'date-fns/locale'
 import { supabase } from '@/lib/supabase'
 import { ESTADOS, SERVICOS, type Estado, type Lead, type Nota } from '@/lib/types'
-import { notifyLeadsChanged } from '@/hooks/useLeadSheet'
+import { notifyLeadsChanged, type LeadSheetTab } from '@/hooks/useLeadSheet'
 import { useToast } from '@/hooks/useToast'
 import EstadoBadge from './EstadoBadge'
 import Avatar from './Avatar'
@@ -11,14 +11,15 @@ import WhatsAppChat from './WhatsAppChat'
 
 interface Props {
   lead: Lead
+  initialTab?: LeadSheetTab
   onClose: () => void
 }
 
-type Tab = 'detalhes' | 'whatsapp'
+type Tab = LeadSheetTab
 
-export default function LeadSheet({ lead, onClose }: Props) {
+export default function LeadSheet({ lead, initialTab = 'detalhes', onClose }: Props) {
   const toast = useToast()
-  const [tab, setTab] = useState<Tab>('detalhes')
+  const [tab, setTab] = useState<Tab>(initialTab)
   const [form, setForm] = useState(lead)
   const [saving, setSaving] = useState(false)
   const [notas, setNotas] = useState<Nota[]>([])
@@ -26,6 +27,7 @@ export default function LeadSheet({ lead, onClose }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => { setForm(lead) }, [lead])
+  useEffect(() => { setTab(initialTab) }, [lead.id, initialTab])
 
   useEffect(() => {
     supabase

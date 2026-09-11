@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useLeadSheet } from '@/hooks/useLeadSheet'
 import CommandPalette from '@/components/CommandPalette'
 import LeadSheet from '@/components/crm/LeadSheet'
+import logo from '@/assets/logo-razao-dinamica.png'
 
 const linkBase = 'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors'
 const linkActive = 'bg-gold text-navy'
@@ -11,14 +12,14 @@ const linkInactive = 'text-sand/70 hover:bg-white/10 hover:text-sand'
 
 export default function Layout() {
   const { session } = useAuth()
-  const { selected, openLead, closeLead } = useLeadSheet()
+  const { selected, initialTab, openLead, closeLead } = useLeadSheet()
 
   return (
     <div className="min-h-screen flex bg-sand">
       <aside className="w-56 flex-shrink-0 bg-navy text-sand flex flex-col">
         <div className="px-4 py-5">
-          <div className="font-display font-extrabold text-base leading-none">Razão Dinâmica</div>
-          <div className="font-mono text-[9px] tracking-widest uppercase text-gold mt-1">CRM de leads</div>
+          <img src={logo} alt="Razão Dinâmica" className="h-7 w-auto" />
+          <div className="font-mono text-[9px] tracking-widest uppercase text-gold mt-2">CRM de leads</div>
         </div>
 
         <button
@@ -36,6 +37,9 @@ export default function Layout() {
           </NavLink>
           <NavLink to="/leads" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}>
             <UsersIcon /> Leads
+          </NavLink>
+          <NavLink to="/chats" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}>
+            <ChatIcon /> Chats
           </NavLink>
         </nav>
 
@@ -57,7 +61,7 @@ export default function Layout() {
       </main>
 
       <CommandPalette onOpenLead={openLead} />
-      {selected && <LeadSheet lead={selected} onClose={closeLead} />}
+      {selected && <LeadSheet lead={selected} initialTab={initialTab} onClose={closeLead} />}
     </div>
   )
 }
@@ -70,4 +74,7 @@ function GridIcon() {
 }
 function UsersIcon() {
   return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+}
+function ChatIcon() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
 }

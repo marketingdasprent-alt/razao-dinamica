@@ -33,6 +33,7 @@ export interface Lead {
   mensagem: string | null
   consentimento: boolean | null
   origem: string
+  device_type: 'mobile' | 'desktop' | null
   estado: Estado
   criado_em: string
   atualizado_em: string

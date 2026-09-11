@@ -220,7 +220,10 @@ export default function LeadSheet({ lead, initialTab = 'detalhes', onClose }: Pr
           </div>
 
           <div className="flex items-center justify-between text-[11px] text-navy/40 font-mono">
-            <span>Origem: {lead.origem}</span>
+            <span>
+              Origem: {lead.origem}
+              {lead.device_type && ` · ${lead.device_type === 'mobile' ? 'Telemóvel' : 'Computador'}`}
+            </span>
             <span>Criado: {format(new Date(lead.criado_em), 'dd/MM/yyyy HH:mm')}</span>
           </div>
 

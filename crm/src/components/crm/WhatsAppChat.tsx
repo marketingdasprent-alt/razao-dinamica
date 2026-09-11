@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { format } from 'date-fns'
+import { notifyLeadsChanged } from '@/hooks/useLeadSheet'
 import { supabase } from '@/lib/supabase'
 import type { Lead, MensagemWhatsApp } from '@/lib/types'
 import { useToast } from '@/hooks/useToast'
 
-export default function WhatsAppChat({ lead }: { lead: Lead }) {
+export default function WhatsAppChat({ lead, readOnly = false }: { lead: Lead; readOnly?: boolean }) {
   const toast = useToast()
   const [mensagens, setMensagens] = useState<MensagemWhatsApp[]>([])
   const [texto, setTexto] = useState('')
@@ -30,7 +31,7 @@ export default function WhatsAppChat({ lead }: { lead: Lead }) {
 
   async function handleSend() {
     const corpo = texto.trim()
-    if (!corpo) return
+    if (!corpo || readOnly || sending) return
     setSending(true)
     const { data, error } = await supabase
       .from('whatsapp_mensagens')
@@ -41,6 +42,7 @@ export default function WhatsAppChat({ lead }: { lead: Lead }) {
     if (error) { toast.show('Não foi possível guardar a mensagem.', 'error'); return }
     setMensagens((prev) => [...prev, data as MensagemWhatsApp])
     setTexto('')
+    notifyLeadsChanged()
   }
 
   const semNumero = !lead.telefone
@@ -84,9 +86,11 @@ export default function WhatsAppChat({ lead }: { lead: Lead }) {
         <div ref={bottomRef} />
       </div>
 
+      {readOnly && <p className="px-4 text-xs text-navy/60">Assuma o lead em Detalhes para escrever mensagens.</p>}
       <div className="border-t border-navy/10 p-3 flex gap-2">
         <input
           type="text"
+          disabled={readOnly}
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') handleSend() }}
@@ -95,7 +99,7 @@ export default function WhatsAppChat({ lead }: { lead: Lead }) {
         />
         <button
           onClick={handleSend}
-          disabled={sending || !texto.trim()}
+          disabled={readOnly || sending || !texto.trim()}
           className="rounded-lg bg-teal text-white text-sm font-medium px-4 hover:brightness-105 transition disabled:opacity-50"
         >
           Enviar

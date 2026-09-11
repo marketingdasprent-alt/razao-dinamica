@@ -1,7 +1,9 @@
+import { useDataRefresh } from '@/hooks/useDataRefresh'
 import { useEffect, useState } from 'react'
+import { mudarEstado } from '@/lib/leadActions'
 import { supabase } from '@/lib/supabase'
 import type { Estado, Lead } from '@/lib/types'
-import { useLeadSheet, notifyLeadsChanged, LEADS_CHANGED_EVENT } from '@/hooks/useLeadSheet'
+import { useLeadSheet, notifyLeadsChanged } from '@/hooks/useLeadSheet'
 import { useToast } from '@/hooks/useToast'
 import KanbanBoard from '@/components/crm/KanbanBoard'
 import LeadsTable from '@/components/crm/LeadsTable'
@@ -16,22 +18,23 @@ export default function Leads() {
   const toast = useToast()
 
   async function load() {
-    const { data } = await supabase.from('leads').select('*').order('criado_em', { ascending: false })
+    const { data } = await supabase.from('leads').select('*, responsavel:perfis!leads_atribuido_a_fkey(nome)').order('criado_em', { ascending: false })
     setLeads((data as Lead[]) ?? [])
     setLoading(false)
   }
 
-  useEffect(() => {
-    load()
-    window.addEventListener(LEADS_CHANGED_EVENT, load)
-    return () => window.removeEventListener(LEADS_CHANGED_EVENT, load)
-  }, [])
+  useEffect(() => { load() }, [])
+  useDataRefresh(load)
 
   async function handleEstadoChange(leadId: string, estado: Estado) {
-    setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, estado } : l)))
-    const { error } = await supabase.from('leads').update({ estado, atualizado_em: new Date().toISOString() }).eq('id', leadId)
-    if (error) { toast.show('Não foi possível mover o lead.', 'error'); load(); return }
-    toast.show(`Movido para "${estado}".`)
+    const lead = leads.find(item => item.id === leadId)
+    if (!lead) return
+    try {
+      await mudarEstado(lead, estado)
+      toast.show('Estado atualizado.')
+    } catch (error) {
+      toast.show(error instanceof Error ? error.message : 'Não foi possível mover o lead.', 'error')
+    }
     notifyLeadsChanged()
   }
 

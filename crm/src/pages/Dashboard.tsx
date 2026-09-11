@@ -1,8 +1,10 @@
+import { useDataRefresh } from '@/hooks/useDataRefresh'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { ESTADOS, type Estado, type Lead } from '@/lib/types'
-import { useLeadSheet, LEADS_CHANGED_EVENT, notifyLeadsChanged } from '@/hooks/useLeadSheet'
+import { useLeadSheet, notifyLeadsChanged } from '@/hooks/useLeadSheet'
 import { useToast } from '@/hooks/useToast'
 import EstadoBadge from '@/components/crm/EstadoBadge'
 import Avatar from '@/components/crm/Avatar'
@@ -11,6 +13,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { pt } from 'date-fns/locale'
 
 export default function Dashboard() {
+  const { isAdmin } = useAuth()
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [selecionados, setSelecionados] = useState<string[]>([])
@@ -21,7 +24,7 @@ export default function Dashboard() {
   function load() {
     supabase
       .from('leads')
-      .select('*')
+      .select('*, responsavel:perfis!leads_atribuido_a_fkey(nome)')
       .order('criado_em', { ascending: false })
       .then(({ data }) => {
         const novos = (data as Lead[]) ?? []
@@ -31,11 +34,8 @@ export default function Dashboard() {
       })
   }
 
-  useEffect(() => {
-    load()
-    window.addEventListener(LEADS_CHANGED_EVENT, load)
-    return () => window.removeEventListener(LEADS_CHANGED_EVENT, load)
-  }, [])
+  useEffect(() => { load() }, [])
+  useDataRefresh(load)
 
   if (loading) return <SkeletonDashboard />
 
@@ -67,9 +67,10 @@ export default function Dashboard() {
   }
 
   async function handleDeleteSelecionados() {
-    const { error } = await supabase.from('leads').delete().in('id', selecionados)
-    if (error) { toast.show('Não foi possível apagar os leads selecionados.', 'error'); return }
-    toast.show(`${selecionados.length} lead(s) apagado(s).`)
+    if (!isAdmin) return
+    const { data, error } = await supabase.from('leads').delete().in('id', selecionados).select('id')
+    if (error || !data?.length) { toast.show('Não foi possível apagar os leads selecionados.', 'error'); load(); return }
+    toast.show(`${data.length} lead(s) apagado(s).`)
     setSelecionados([])
     setConfirmando(false)
     notifyLeadsChanged()
@@ -146,7 +147,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             <h2 className="font-display font-semibold text-navy">Leads recentes</h2>
-            {recentes.length > 0 && (
+            {isAdmin && recentes.length > 0 && (
               <label className="flex items-center gap-1.5 text-xs text-navy/50 hover:text-navy/70 cursor-pointer">
                 <input
                   type="checkbox"
@@ -159,7 +160,7 @@ export default function Dashboard() {
             )}
           </div>
           <div className="flex items-center gap-4">
-            {selecionados.length > 0 && (
+            {isAdmin && selecionados.length > 0 && (
               <button onClick={() => setConfirmando(true)} className="text-xs text-red-600 font-medium hover:underline">
                 Apagar selecionados ({selecionados.length})
               </button>
@@ -173,12 +174,12 @@ export default function Dashboard() {
           )}
           {recentes.map((lead) => (
             <div key={lead.id} className="flex items-center gap-3 px-4 py-3 hover:bg-sand/60 transition-colors">
-              <input
+              {isAdmin && <input
                 type="checkbox"
                 checked={selecionados.includes(lead.id)}
                 onChange={() => toggleSelecionado(lead.id)}
                 className="w-4 h-4 rounded border-navy/30 text-gold focus:ring-gold flex-shrink-0"
-              />
+              />}
               <button onClick={() => openLead(lead)} className="flex-1 flex items-center gap-3 min-w-0 text-left">
                 <Avatar nome={lead.nome} apelido={lead.apelido} size={32} />
                 <div className="flex-1 min-w-0">

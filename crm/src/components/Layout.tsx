@@ -11,15 +11,14 @@ const linkActive = 'bg-gold text-navy'
 const linkInactive = 'text-sand/70 hover:bg-white/10 hover:text-sand'
 
 export default function Layout() {
-  const { session } = useAuth()
+  const { session, isAdmin } = useAuth()
   const { selected, initialTab, openLead, closeLead } = useLeadSheet()
 
   return (
-    <div className="min-h-screen flex bg-sand">
-      <aside className="w-56 flex-shrink-0 bg-navy text-sand flex flex-col">
-        <div className="px-4 py-5">
-          <img src={logo} alt="Razão Dinâmica" className="h-7 w-auto" />
-          <div className="font-mono text-[9px] tracking-widest uppercase text-gold mt-2">CRM de leads</div>
+    <div className="min-h-screen flex flex-col md:flex-row bg-sand">
+      <aside className="w-full md:w-56 flex-shrink-0 bg-navy text-sand flex flex-col">
+        <div className="px-4 py-6">
+          <img src={logo} alt="Razão Dinâmica" className="h-9 w-auto" />
         </div>
 
         <button
@@ -31,7 +30,7 @@ export default function Layout() {
           <kbd className="ml-auto font-mono text-[10px] bg-white/10 rounded px-1.5 py-0.5">⌘K</kbd>
         </button>
 
-        <nav className="flex-1 flex flex-col gap-1 px-3">
+        <nav className="flex-1 flex flex-row flex-wrap md:flex-col gap-1 px-3">
           <NavLink to="/" end className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}>
             <GridIcon /> Dashboard
           </NavLink>
@@ -41,6 +40,10 @@ export default function Layout() {
           <NavLink to="/chats" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}>
             <ChatIcon /> Chats
           </NavLink>
+          {isAdmin && <NavLink to="/atividade" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}>
+            <ActivityIcon /> Atividade
+          </NavLink>}
+          {isAdmin && <NavLink to="/utilizadores" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}><UsersIcon /> Utilizadores</NavLink>}
         </nav>
 
         <div className="px-3 py-4 border-t border-white/10">
@@ -55,13 +58,13 @@ export default function Layout() {
       </aside>
 
       <main className="flex-1 min-w-0">
-        <div className="max-w-6xl mx-auto px-6 py-6">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 py-6">
           <Outlet />
         </div>
       </main>
 
       <CommandPalette onOpenLead={openLead} />
-      {selected && <LeadSheet lead={selected} initialTab={initialTab} onClose={closeLead} />}
+      {selected && <LeadSheet key={selected.id} lead={selected} initialTab={initialTab} onClose={closeLead} />}
     </div>
   )
 }
@@ -77,4 +80,7 @@ function UsersIcon() {
 }
 function ChatIcon() {
   return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+}
+function ActivityIcon() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
 }

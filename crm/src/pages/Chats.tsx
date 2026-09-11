@@ -1,3 +1,4 @@
+import { useDataRefresh } from '@/hooks/useDataRefresh'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Lead, MensagemWhatsApp } from '@/lib/types'
@@ -14,6 +15,8 @@ interface Conversa {
 
 export default function Chats() {
   const [conversas, setConversas] = useState<Conversa[]>([])
+  const [revision, setRevision] = useState(0)
+  useDataRefresh(() => setRevision(value => value + 1))
   const [loading, setLoading] = useState(true)
   const { openLead } = useLeadSheet()
 
@@ -40,7 +43,7 @@ export default function Chats() {
         setLoading(false)
       })
     return () => { ativo = false }
-  }, [])
+  }, [revision])
 
   return (
     <div>

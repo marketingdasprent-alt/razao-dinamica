@@ -2,6 +2,11 @@ import intlTelInput from 'intl-tel-input';
 import pt from 'intl-tel-input/i18n/pt';
 import 'intl-tel-input/styles';
 
+// CRM lead intake (Supabase REST). The anon key is public by design; the
+// `leads` table only grants it INSERT, so this is safe to ship client-side.
+var CRM_LEADS_ENDPOINT = 'https://gnrvehnisngrqttlkdts.supabase.co/rest/v1/leads';
+var CRM_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImducnZlaG5pc25ncnF0dGxrZHRzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNDI4ODYsImV4cCI6MjEwNDYxODg4Nn0.WycUgjVxRrhAUP4mlCnGnuroZ_2QZtCTXBBFsXhbvM8';
+
 (function(){
   // Consent-gated Meta Pixel + Conversions API. The same event ID is used on
   // both transports so Meta can deduplicate browser and server events.
@@ -649,7 +654,6 @@ import 'intl-tel-input/styles';
     form.addEventListener('submit', async function(event){
       event.preventDefault();
       if (isSubmitting || (form.elements.website && form.elements.website.value)) return;
-      var endpoint = form.getAttribute('action');
       if (phonePlugin && phoneInput.value.trim()) await phonePlugin.promise;
       syncPhoneCountry();
       validatePhone();
@@ -658,15 +662,18 @@ import 'intl-tel-input/styles';
       var controller = new AbortController();
       var timeout = window.setTimeout(function(){ controller.abort(); }, 15000);
       function value(name){ return form.elements[name] ? form.elements[name].value.trim() : ''; }
+      var origem = window.location.pathname.indexOf('landing-page') !== -1 ? 'landing-page' : 'home';
       var payload = {
         nome:value('nome'),
-        apelido:value('apelido'),
+        apelido:value('apelido') || null,
         email:value('email'),
-        empresa:value('empresa'),
-        ddi:value('ddi'),
-        telefone:nationalPhoneValue(),
-        servico:value('servico'),
-        mensagem:value('mensagem')
+        empresa:value('empresa') || null,
+        ddi:value('ddi') || '+351',
+        telefone:nationalPhoneValue() || null,
+        servico:value('servico') || null,
+        mensagem:value('mensagem') || null,
+        consentimento: form.elements.consentimento ? value('consentimento') === 'Aceito' : null,
+        origem:origem
       };
       isSubmitting = true;
       form.classList.remove('is-success');
@@ -674,15 +681,18 @@ import 'intl-tel-input/styles';
       if (submitButton) submitButton.disabled = true;
       status.textContent = 'A enviar a sua mensagem…';
       try {
-        var response = await fetch(endpoint, {
+        var response = await fetch(CRM_LEADS_ENDPOINT, {
           method:'POST',
-          // Apps Script does not answer JSON preflight requests; text/plain keeps the JSON body intact without OPTIONS.
-          headers:{ 'Content-Type':'text/plain;charset=UTF-8', Accept:'application/json' },
+          headers:{
+            'Content-Type':'application/json',
+            'apikey':CRM_ANON_KEY,
+            'Authorization':'Bearer ' + CRM_ANON_KEY,
+            'Prefer':'return=minimal'
+          },
           body:JSON.stringify(payload),
           signal:controller.signal
         });
-        var result = await response.json();
-        if (!response.ok || !result || result.success !== true) throw new Error('Submissão não confirmada');
+        if (!response.ok) throw new Error('Submissão não confirmada');
         form.reset();
         if (phonePlugin) phonePlugin.setCountry('pt');
         syncPhoneCountry();

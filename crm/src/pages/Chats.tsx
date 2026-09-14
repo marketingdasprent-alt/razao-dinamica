@@ -1,7 +1,7 @@
 import { useDataRefresh } from '@/hooks/useDataRefresh'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { Lead, MensagemWhatsApp } from '@/lib/types'
+import { LEAD_COM_RESPONSAVEL, type Lead, type MensagemWhatsApp } from '@/lib/types'
 import { useLeadSheet } from '@/hooks/useLeadSheet'
 import Avatar from '@/components/crm/Avatar'
 import { formatDistanceToNow } from 'date-fns'
@@ -16,7 +16,7 @@ interface Conversa {
 export default function Chats() {
   const [conversas, setConversas] = useState<Conversa[]>([])
   const [revision, setRevision] = useState(0)
-  useDataRefresh(() => setRevision(value => value + 1))
+  useDataRefresh(() => setRevision(value => value + 1), 'whatsapp_mensagens')
   const [loading, setLoading] = useState(true)
   const { openLead } = useLeadSheet()
 
@@ -24,7 +24,7 @@ export default function Chats() {
     let ativo = true
     supabase
       .from('whatsapp_mensagens')
-      .select('*, lead:leads(*)')
+      .select(`*, lead:leads(${LEAD_COM_RESPONSAVEL})`)
       .order('criado_em', { ascending: false })
       .then(({ data }) => {
         if (!ativo) return

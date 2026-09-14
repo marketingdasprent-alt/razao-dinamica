@@ -19,6 +19,7 @@ export default function Utilizadores() {
   const [papel, setPapel] = useState<'admin' | 'gestor'>('gestor')
   const [password, setPassword] = useState('')
   const [ativo, setAtivo] = useState(true)
+  const [podeEditar, setPodeEditar] = useState(false)
   const [resetAlvo, setResetAlvo] = useState<Perfil | null>(null)
 
   async function load() {
@@ -33,6 +34,7 @@ export default function Utilizadores() {
   function select(user: Perfil | null) {
     setEdit(user); setNome(user?.nome ?? ''); setEmail(user?.email ?? '')
     setPapel(user?.papel ?? 'gestor'); setAtivo(user?.ativo ?? true)
+    setPodeEditar(user?.pode_editar_leads ?? false)
     setError(''); setMessage(''); setPassword('')
   }
 
@@ -46,7 +48,7 @@ export default function Utilizadores() {
       const response = await fetch('/api/utilizadores', {
         method: edit ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${current.session.access_token}` },
-        body: JSON.stringify({ id: edit?.id, nome, email, papel, ativo, password: edit ? undefined : password }),
+        body: JSON.stringify({ id: edit?.id, nome, email, papel, ativo, podeEditarLeads: podeEditar, password: edit ? undefined : password }),
       })
       const result = await response.json()
       if (!response.ok) throw new Error(result.error || 'Não foi possível guardar.')
@@ -101,6 +103,10 @@ export default function Utilizadores() {
           <option value="gestor">Gestor</option><option value="admin">Administrador</option></select></label>
         {!edit && <label className="block text-xs text-navy/70">Senha temporária<input type="password" autoComplete="new-password" required minLength={12} maxLength={72} value={password} onChange={e => setPassword(e.target.value)} className={`${field} mt-1`} /><span className="block mt-1">Pelo menos 12 caracteres.</span></label>}
         {edit && <label className="flex gap-2 text-sm"><input type="checkbox" checked={ativo} onChange={e => setAtivo(e.target.checked)} />Acesso ativo</label>}
+        {edit && papel === 'gestor' && <>
+          <label className="flex gap-2 text-sm"><input type="checkbox" checked={podeEditar} onChange={e => setPodeEditar(e.target.checked)} />Permissão de edição</label>
+          <p className="text-xs text-navy/50 -mt-2">Sem esta permissão, o gestor só visualiza os leads atribuídos a si — não edita campos, não muda o estado e não escreve notas ou mensagens.</p>
+        </>}
         <p className="text-xs text-navy/50">{edit ? 'Desativar bloqueia o acesso. Os leads continuam atribuídos até o administrador os redistribuir.' : 'Entregue a senha temporária por um canal privado. A troca será obrigatória no primeiro acesso. Não será enviado email.'}</p>
         <button disabled={busy} className="w-full rounded-lg bg-navy text-sand py-2.5 text-sm disabled:opacity-50">{busy ? 'A guardar…' : edit ? 'Guardar alterações' : 'Criar conta'}</button>
         {edit && <button type="button" disabled={busy} onClick={() => select(null)} className="w-full text-sm text-navy/60">Cancelar</button>}

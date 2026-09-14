@@ -1,7 +1,5 @@
 import Responsavel from './Responsavel'
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
-import { useDroppable } from '@dnd-kit/core'
-import { useDraggable } from '@dnd-kit/core'
+import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
 import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { pt } from 'date-fns/locale'

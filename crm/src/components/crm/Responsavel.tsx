@@ -2,7 +2,7 @@ import { useAuth } from '@/hooks/useAuth'
 import type { Lead } from '@/lib/types'
 
 export default function Responsavel({ lead }: { lead: Lead }) {
-  const { session } = useAuth()
+  const { session, profile } = useAuth()
 
   if (!lead.atribuido_a) {
     if (lead.estado === 'Novo') {
@@ -18,15 +18,12 @@ export default function Responsavel({ lead }: { lead: Lead }) {
     return <span className="text-[11px] font-medium text-red-500">Atribuição pendente</span>
   }
 
-  if (lead.atribuido_a === session?.user.id) {
-    return (
-      <span className="inline-flex items-center rounded-full bg-teal/15 px-2 py-0.5 text-[10px] font-semibold text-teal">
-        Atribuído a si
-      </span>
-    )
-  }
-
-  return <span className="text-[11px] text-navy/40">{lead.responsavel?.nome ?? 'Atribuído à equipa'}</span>
+  const nome = lead.atribuido_a === session?.user.id ? profile?.nome : lead.responsavel?.nome
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-teal/15 px-2.5 py-1 text-[11px] font-medium text-teal">
+      <span className="text-teal/60 font-normal">Atribuído a:</span> {nome ?? 'equipa'}
+    </span>
+  )
 }
 
 function InboxIcon() {

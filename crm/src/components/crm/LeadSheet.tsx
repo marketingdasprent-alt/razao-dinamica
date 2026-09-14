@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { format, formatDistanceToNow } from 'date-fns'
 import { pt } from 'date-fns/locale'
 import { useAuth } from '@/hooks/useAuth'
@@ -22,7 +22,7 @@ type Tab = LeadSheetTab
 
 export default function LeadSheet({ lead, initialTab = 'detalhes', onClose }: Props) {
   const toast = useToast()
-  const { session, isAdmin } = useAuth()
+  const { session, isAdmin, profile } = useAuth()
   const [responsaveis, setResponsaveis] = useState<Perfil[]>([])
   const [novoResponsavel, setNovoResponsavel] = useState(lead.atribuido_a ?? '')
   const [changing, setChanging] = useState(false)
@@ -33,8 +33,19 @@ export default function LeadSheet({ lead, initialTab = 'detalhes', onClose }: Pr
   const [novaNota, setNovaNota] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  const canEdit = isAdmin || form.atribuido_a === session?.user.id
-  useEffect(() => { setForm(lead); setNovoResponsavel(lead.atribuido_a ?? '') }, [lead])
+  const canEdit = isAdmin || (form.atribuido_a === session?.user.id && !!profile?.pode_editar_leads)
+  const dirtyRef = useRef(false)
+  const previousLeadId = useRef(lead.id)
+  useEffect(() => {
+    setNovoResponsavel(lead.atribuido_a ?? '')
+    const switchedLead = previousLeadId.current !== lead.id
+    previousLeadId.current = lead.id
+    if (switchedLead) dirtyRef.current = false
+    // Uma atualização em tempo real (outra sessão a mexer no mesmo lead) só
+    // substitui o formulário se não houver edições locais por guardar —
+    // senão apagaria silenciosamente o que o gestor estava a escrever.
+    if (switchedLead || !dirtyRef.current) setForm(lead)
+  }, [lead])
   useEffect(() => {
     if (isAdmin) supabase.from('perfis').select('*').order('nome').then(({ data }) => setResponsaveis((data as Perfil[]) ?? []))
   }, [isAdmin])
@@ -61,6 +72,7 @@ export default function LeadSheet({ lead, initialTab = 'detalhes', onClose }: Pr
   }, [lead.id])
 
   function set<K extends keyof Lead>(key: K, value: Lead[K]) {
+    dirtyRef.current = true
     setForm((f) => ({ ...f, [key]: value }))
   }
 
@@ -83,6 +95,7 @@ export default function LeadSheet({ lead, initialTab = 'detalhes', onClose }: Pr
       .eq('id', lead.id).eq('atualizado_em', form.atualizado_em).select().single()
     setSaving(false)
     if (error || !data) { toast.show('O lead mudou ou não pode ser editado. Atualize a ficha.', 'error'); notifyLeadsChanged(); onClose(); return }
+    dirtyRef.current = false
     setForm(data as Lead)
     toast.show('Lead atualizado.')
     notifyLeadsChanged()
@@ -221,13 +234,19 @@ export default function LeadSheet({ lead, initialTab = 'detalhes', onClose }: Pr
               </label>
               <button disabled={changing || novoResponsavel === (form.atribuido_a ?? '')} onClick={() => handleAtribuir()} className="text-sm text-teal underline disabled:opacity-40">{novoResponsavel ? 'Guardar responsável' : 'Devolver à fila comum'}</button>
             </>}
-            {!canEdit && form.atribuido_a && <p className="text-xs text-navy/60">Só quem está atribuído a este lead (ou o admin) pode editar, adicionar notas e escrever mensagens.</p>}
+            {!canEdit && form.atribuido_a && (
+              <p className="text-xs text-navy/60">
+                {form.atribuido_a === session?.user.id
+                  ? 'Ainda não tem permissão de edição — peça ao administrador para a ativar na sua ficha em Utilizadores.'
+                  : 'Só quem está atribuído a este lead (ou o admin) pode editar, adicionar notas e escrever mensagens.'}
+              </p>
+            )}
           </div>
           {form.atribuido_a && (
             <div>
               <label className="block text-xs font-medium text-navy/60 mb-1">Estado</label>
               <select
-                disabled={changing}
+                disabled={changing || !canEdit}
                 value={form.estado}
                 onChange={(e) => handleEstadoChange(e.target.value as Estado)}
                 className="w-full rounded-lg border border-navy/15 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold"

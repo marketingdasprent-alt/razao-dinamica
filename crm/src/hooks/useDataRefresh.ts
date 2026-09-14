@@ -7,7 +7,7 @@ import { LEADS_CHANGED_EVENT } from './useLeadSheet'
 // um lead muda (sobretudo atribuição) — essencial para não deixar duas
 // pessoas assumirem o mesmo lead sem se aperceberem uma da outra. O
 // polling longo fica só como rede de segurança caso a ligação caia.
-export function useDataRefresh(load: () => void) {
+export function useDataRefresh(load: () => void, table: string = 'leads') {
   const latest = useRef(load)
   latest.current = load
   useEffect(() => {
@@ -16,8 +16,8 @@ export function useDataRefresh(load: () => void) {
     window.addEventListener('focus', refresh)
     window.addEventListener(LEADS_CHANGED_EVENT, refresh)
     const channel = supabase
-      .channel('leads-changes-' + Math.random().toString(36).slice(2))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, refresh)
+      .channel(table + '-changes-' + Math.random().toString(36).slice(2))
+      .on('postgres_changes', { event: '*', schema: 'public', table }, refresh)
       .subscribe()
     return () => {
       clearInterval(timer)
@@ -25,5 +25,5 @@ export function useDataRefresh(load: () => void) {
       window.removeEventListener(LEADS_CHANGED_EVENT, refresh)
       supabase.removeChannel(channel)
     }
-  }, [])
+  }, [table])
 }

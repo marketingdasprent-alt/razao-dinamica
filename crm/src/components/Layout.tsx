@@ -9,6 +9,7 @@ import logo from '@/assets/logo-razao-dinamica.png'
 const linkBase = 'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors'
 const linkActive = 'bg-gold text-navy'
 const linkInactive = 'text-sand/70 hover:bg-white/10 hover:text-sand'
+const navLinkClass = ({ isActive }: { isActive: boolean }) => `${linkBase} ${isActive ? linkActive : linkInactive}`
 
 export default function Layout() {
   const { session, isAdmin } = useAuth()
@@ -31,26 +32,26 @@ export default function Layout() {
         </button>
 
         <nav className="flex-1 flex flex-row flex-wrap md:flex-col gap-1 px-3">
-          <NavLink to="/" end className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}>
+          <NavLink to="/" end className={navLinkClass}>
             <GridIcon /> Dashboard
           </NavLink>
-          <NavLink to="/leads" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}>
+          <NavLink to="/leads" className={navLinkClass}>
             <UsersIcon /> Leads
           </NavLink>
-          <NavLink to="/chats" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}>
+          <NavLink to="/chats" className={navLinkClass}>
             <ChatIcon /> Chats
           </NavLink>
-          {isAdmin && <NavLink to="/atividade" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}>
+          {isAdmin && <NavLink to="/atividade" className={navLinkClass}>
             <ActivityIcon /> Atividade
           </NavLink>}
-          {isAdmin && <NavLink to="/utilizadores" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}><UsersIcon /> Utilizadores</NavLink>}
+          {isAdmin && <NavLink to="/utilizadores" className={navLinkClass}><UsersIcon /> Utilizadores</NavLink>}
         </nav>
 
-        <div className="px-3 py-4 border-t border-white/10">
-          <div className="text-[11px] text-sand/40 truncate px-1 mb-2">{session?.user.email}</div>
+        <div className="px-3 py-4 border-t border-white/10 text-center">
+          <div className="text-[11px] text-gold font-medium truncate px-1 mb-2">{session?.user.email}</div>
           <button
             onClick={() => supabase.auth.signOut()}
-            className="w-full text-left px-3 py-2 rounded-lg text-xs text-sand/60 hover:bg-white/10 hover:text-sand transition-colors"
+            className="mx-auto inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs text-sand/70 hover:bg-white/10 hover:text-sand hover:border-white/25 transition-colors"
           >
             Terminar sessão
           </button>

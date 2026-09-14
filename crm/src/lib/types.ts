@@ -1,3 +1,7 @@
+// Repetido em toda consulta de leads que precisa do nome do responsável —
+// uma única fonte evita esquecer o join num select novo (já aconteceu).
+export const LEAD_COM_RESPONSAVEL = '*, responsavel:perfis!leads_atribuido_a_fkey(nome)'
+
 export const ESTADOS = [
   'Novo',
   'Contactado',
@@ -61,6 +65,7 @@ export type AcaoEvento = 'apagado' | 'atribuido' | 'reatribuido' | 'devolvido'
 
 export interface Perfil {
   exigir_troca_senha: boolean
+  pode_editar_leads: boolean
   id: string
   nome: string
   email: string

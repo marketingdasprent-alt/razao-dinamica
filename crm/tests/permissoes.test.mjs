@@ -22,6 +22,7 @@ for (const oldEvents of [false, true]) test(`Permissões com migração antiga d
   await db.exec(`grant all on all tables in schema public to anon, authenticated, service_role`)
   await db.exec(await readFile(new URL('supabase-migration-permissoes.sql', root), 'utf8'))
   await db.exec(await readFile(new URL('supabase-migration-senha-temporaria.sql', root), 'utf8'))
+  await db.exec(await readFile(new URL('supabase-migration-permissao-edicao.sql', root), 'utf8'))
   for (let i = 0; i < ids.length; i++) {
     await db.query('insert into auth.users(id,email) values ($1, $2)', [ids[i], `user${i}@test.invalid`])
     if (i < 3) await db.query('insert into public.perfis(id,nome,email,papel) values ($1,$2,$3,$4)', [ids[i], `Pessoa ${i}`, `user${i}@test.invalid`, i === 0 ? 'admin' : 'gestor'])
@@ -66,6 +67,20 @@ for (const oldEvents of [false, true]) test(`Permissões com migração antiga d
     assert.equal((await rows('select * from leads')).length, 0)
     assert.equal((await rows("update leads set estado='Ganho' where id=$1 returning id", [lead.id])).length, 0)
     await assert.rejects(db.query("select public.atribuir_lead($1,$2,$3)", [lead.id, ids[2], version]))
+  })
+  await t.test('Permissão de edição: gestor só edita depois do admin ativar', async () => {
+    await as(1)
+    await assert.rejects(db.query("update leads set nome='Sem permissão' where id=$1", [lead.id]))
+    await assert.rejects(db.query("select public.mudar_estado_lead($1,'Qualificado',$2)", [lead.id, version]))
+    await assert.rejects(db.query("insert into notas(lead_id,corpo) values ($1,'Sem permissão')", [lead.id]))
+    await assert.rejects(db.query("insert into whatsapp_mensagens(lead_id,direcao,corpo) values ($1,'saida','Sem permissão')", [lead.id]))
+    assert.equal((await rows('select * from leads'))[0].nome, 'Lead teste')
+    await as(0)
+    await db.query("select public.alterar_perfil($1,'Pessoa 1','gestor',true,true)", [ids[1]])
+    await as(1)
+    const [atualizado] = await rows("select * from public.mudar_estado_lead($1,'Qualificado',$2)", [lead.id, version])
+    assert.equal(atualizado.estado, 'Qualificado')
+    version = atualizado.atualizado_em
   })
   await t.test('Notas e conversas privadas; gestores não apagam nem forjam auditoria', async () => {
     await as(1)

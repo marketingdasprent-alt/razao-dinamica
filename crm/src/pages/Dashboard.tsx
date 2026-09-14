@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
-import { ESTADOS, type Estado, type Lead } from '@/lib/types'
+import { ESTADOS, LEAD_COM_RESPONSAVEL, type Estado, type Lead } from '@/lib/types'
 import { useLeadSheet, notifyLeadsChanged } from '@/hooks/useLeadSheet'
 import { useToast } from '@/hooks/useToast'
 import EstadoBadge from '@/components/crm/EstadoBadge'
@@ -24,7 +24,7 @@ export default function Dashboard() {
   function load() {
     supabase
       .from('leads')
-      .select('*, responsavel:perfis!leads_atribuido_a_fkey(nome)')
+      .select(LEAD_COM_RESPONSAVEL)
       .order('criado_em', { ascending: false })
       .then(({ data }) => {
         const novos = (data as Lead[]) ?? []
@@ -190,7 +190,10 @@ export default function Dashboard() {
                   </div>
                 </div>
               </button>
-              <EstadoBadge estado={lead.estado} />
+              <div className="text-right flex-shrink-0">
+                <div className="text-[9px] uppercase tracking-wide text-navy/35 mb-0.5">Estado</div>
+                <EstadoBadge estado={lead.estado} />
+              </div>
             </div>
           ))}
         </div>

@@ -2,7 +2,7 @@ import { useDataRefresh } from '@/hooks/useDataRefresh'
 import { useEffect, useState } from 'react'
 import { mudarEstado } from '@/lib/leadActions'
 import { supabase } from '@/lib/supabase'
-import type { Estado, Lead } from '@/lib/types'
+import { LEAD_COM_RESPONSAVEL, type Estado, type Lead } from '@/lib/types'
 import { useLeadSheet, notifyLeadsChanged } from '@/hooks/useLeadSheet'
 import { useToast } from '@/hooks/useToast'
 import KanbanBoard from '@/components/crm/KanbanBoard'
@@ -18,7 +18,7 @@ export default function Leads() {
   const toast = useToast()
 
   async function load() {
-    const { data } = await supabase.from('leads').select('*, responsavel:perfis!leads_atribuido_a_fkey(nome)').order('criado_em', { ascending: false })
+    const { data } = await supabase.from('leads').select(LEAD_COM_RESPONSAVEL).order('criado_em', { ascending: false })
     setLeads((data as Lead[]) ?? [])
     setLoading(false)
   }

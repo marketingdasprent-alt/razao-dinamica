@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { Lead } from '@/lib/types'
+import { LEAD_COM_RESPONSAVEL, type Lead } from '@/lib/types'
 
 export type LeadSheetTab = 'detalhes' | 'whatsapp'
 
@@ -27,7 +27,7 @@ export function LeadSheetProvider({ children }: { children: ReactNode }) {
     let disposed = false
     const id = selected.id
     async function refresh() {
-      const { data, error } = await supabase.from('leads').select('*, responsavel:perfis!leads_atribuido_a_fkey(nome)').eq('id', id).maybeSingle()
+      const { data, error } = await supabase.from('leads').select(LEAD_COM_RESPONSAVEL).eq('id', id).maybeSingle()
       if (disposed) return
       if (error || !data) { setSelected(null); return }
       setSelected(previous => previous?.id === id && previous.atualizado_em !== data.atualizado_em ? data as Lead : previous)

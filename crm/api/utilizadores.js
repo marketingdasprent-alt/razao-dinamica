@@ -52,7 +52,16 @@ export function createHandler({ env = process.env, client = createClient } = {})
         if (pwError) return res.status(409).json({ error: 'Não foi possível repor a senha. Atualize a página e tente novamente.' })
         const { error: flagError } = await admin.from('perfis').update({ exigir_troca_senha: true }).eq('id', body.id)
         if (flagError) {
-          return res.status(409).json({ error: 'A senha foi alterada, mas não foi possível marcar a troca obrigatória. Avise o responsável técnico.' })
+          // A troca de senha já libertou exigir_troca_senha (gatilho em
+          // supabase-migration-senha-temporaria.sql). Se não conseguirmos
+          // voltar a marcá-la, a senha temporária escolhida pelo admin
+          // ficaria permanente e utilizável sem aviso — falha fechada:
+          // desativa a conta até haver reconciliação manual.
+          const { error: lockError } = await admin.from('perfis').update({ ativo: false }).eq('id', body.id)
+          const detalhe = lockError
+            ? 'Avise já o responsável técnico: a conta pode estar acessível com a nova senha sem exigir troca.'
+            : 'A conta foi desativada até à reconciliação manual.'
+          return res.status(409).json({ error: `A senha foi alterada, mas não foi possível marcar a troca obrigatória. ${detalhe}` })
         }
         return res.status(200).json({ message: 'Senha temporária definida. Entregue-a ao utilizador por um canal privado — ele terá de a trocar no próximo acesso.' })
       }
@@ -62,7 +71,7 @@ export function createHandler({ env = process.env, client = createClient } = {})
         return res.status(400).json({ error: 'Indique um nome e um perfil válidos.' })
       }
       if (req.method === 'PATCH') {
-        if (typeof body.id !== 'string' || !uuidRegex.test(body.id) || typeof body.ativo !== 'boolean') {
+        if (typeof body.id !== 'string' || !uuidRegex.test(body.id) || typeof body.ativo !== 'boolean' || typeof body.podeEditarLeads !== 'boolean') {
           return res.status(400).json({ error: 'Utilizador ou estado inválido.' })
         }
         // A operação usa a sessão do autor para voltar a validar privilégios
@@ -72,7 +81,7 @@ export function createHandler({ env = process.env, client = createClient } = {})
           auth: { persistSession: false, autoRefreshToken: false },
         })
         const { data, error } = await caller.rpc('alterar_perfil', {
-          p_id: body.id, p_nome: body.nome.trim(), p_papel: body.papel, p_ativo: body.ativo,
+          p_id: body.id, p_nome: body.nome.trim(), p_papel: body.papel, p_ativo: body.ativo, p_pode_editar: body.podeEditarLeads,
         })
         if (error) return res.status(409).json({ error: 'Não foi possível alterar. Mantenha pelo menos um administrador ativo e atualize a página.' })
         return res.status(200).json({ user: data })

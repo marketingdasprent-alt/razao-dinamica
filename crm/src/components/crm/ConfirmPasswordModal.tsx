@@ -27,8 +27,13 @@ export default function ConfirmPasswordModal({ title, description, confirmLabel 
       setError('Palavra-passe incorreta.')
       return
     }
-    await onConfirm()
-    setLoading(false)
+    try {
+      await onConfirm()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível concluir. Tente novamente.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

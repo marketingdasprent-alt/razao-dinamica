@@ -25,7 +25,10 @@ function setup(options = {}) {
       }) }),
       insert: async data => { calls.push(['insert', data]); return { error: options.insertError ? {} : null } },
       update: data => ({ eq: async (...args) => {
-        calls.push(['update', table, data, ...args]); return { error: options.updateFlagError ? {} : null }
+        calls.push(['update', table, data, ...args])
+        if ('exigir_troca_senha' in data) return { error: options.updateFlagError ? {} : null }
+        if ('ativo' in data) return { error: options.lockError ? {} : null }
+        return { error: null }
       } }),
     }),
     rpc: async (...args) => { calls.push(['rpc', config.global?.headers.Authorization, ...args]); return { data: {}, error: options.rpcError ? {} : null } },
@@ -73,12 +76,19 @@ test('Conta duplicada, falha no Auth e falha parcial não aparentam sucesso', as
     if (options.existing) assert.equal(app.calls.length, 0)
   }
 })
-test('Alteração de perfil usa JWT do autor e propaga recusa da transação', async () => {
-  const request = { method: 'PATCH', body: { ...body, id: '00000000-0000-4000-8000-000000000001', ativo: false } }
+test('Alteração de perfil usa JWT do autor, repassa a permissão de edição e propaga recusa da transação', async () => {
+  const request = { method: 'PATCH', body: { ...body, id: '00000000-0000-4000-8000-000000000001', ativo: false, podeEditarLeads: true } }
   const app = setup(); assert.equal((await app.run(request)).statusCode, 200)
   assert.equal(app.calls[0][1], 'Bearer test-token')
   assert.equal(app.calls[0][2], 'alterar_perfil')
+  assert.equal(app.calls[0][3].p_pode_editar, true)
   assert.equal((await setup({ rpcError: true }).run(request)).statusCode, 409)
+})
+test('Alteração de perfil sem indicar a permissão de edição é recusada', async () => {
+  const app = setup()
+  const request = { method: 'PATCH', body: { ...body, id: '00000000-0000-4000-8000-000000000001', ativo: false } }
+  assert.equal((await app.run(request)).statusCode, 400)
+  assert.equal(app.calls.length, 0)
 })
 test('Reposição de senha não exige nome/perfil, marca troca obrigatória e não devolve a senha', async () => {
   const alvo = '00000000-0000-4000-8000-000000000002'
@@ -103,4 +113,22 @@ test('Reposição de senha recusa senha curta/longa e propaga falhas', async () 
   const request = { method: 'PATCH', body: { id: alvo, newPassword: 'Nova-Temp-Password-123!' } }
   assert.equal((await setup({ updatePwError: true }).run(request)).statusCode, 409)
   assert.equal((await setup({ updateFlagError: true }).run(request)).statusCode, 409)
+})
+test('Falha ao marcar a troca obrigatória desativa a conta por segurança (falha fechada)', async () => {
+  const alvo = '00000000-0000-4000-8000-000000000002'
+  const request = { method: 'PATCH', body: { id: alvo, newPassword: 'Nova-Temp-Password-123!' } }
+  const app = setup({ updateFlagError: true })
+  const response = await app.run(request)
+  assert.equal(response.statusCode, 409)
+  assert.equal(app.calls[1][2].exigir_troca_senha, true)
+  assert.equal(app.calls[2][2].ativo, false)
+  assert.match(response.data.error, /desativada/)
+})
+test('Se nem a desativação de segurança for possível, o aviso é mais urgente', async () => {
+  const alvo = '00000000-0000-4000-8000-000000000002'
+  const request = { method: 'PATCH', body: { id: alvo, newPassword: 'Nova-Temp-Password-123!' } }
+  const app = setup({ updateFlagError: true, lockError: true })
+  const response = await app.run(request)
+  assert.equal(response.statusCode, 409)
+  assert.match(response.data.error, /responsável técnico/)
 })

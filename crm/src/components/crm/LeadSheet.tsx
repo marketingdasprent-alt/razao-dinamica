@@ -25,6 +25,7 @@ export default function LeadSheet({ lead, initialTab = 'detalhes', onClose }: Pr
   const { session, isAdmin } = useAuth()
   const [responsaveis, setResponsaveis] = useState<Perfil[]>([])
   const [novoResponsavel, setNovoResponsavel] = useState(lead.atribuido_a ?? '')
+  const [direcionando, setDirecionando] = useState(false)
   const [changing, setChanging] = useState(false)
   const [tab, setTab] = useState<Tab>(initialTab)
   const [form, setForm] = useState(lead)
@@ -34,7 +35,7 @@ export default function LeadSheet({ lead, initialTab = 'detalhes', onClose }: Pr
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const canEdit = isAdmin || form.atribuido_a === session?.user.id
-  useEffect(() => { setForm(lead); setNovoResponsavel(lead.atribuido_a ?? '') }, [lead])
+  useEffect(() => { setForm(lead); setNovoResponsavel(lead.atribuido_a ?? ''); setDirecionando(false) }, [lead])
   useEffect(() => {
     if (isAdmin) supabase.from('perfis').select('*').order('nome').then(({ data }) => setResponsaveis((data as Perfil[]) ?? []))
   }, [isAdmin])
@@ -85,17 +86,23 @@ export default function LeadSheet({ lead, initialTab = 'detalhes', onClose }: Pr
     finally { setChanging(false) }
   }
 
-  async function handleAtribuir() {
+  async function handleAtribuir(responsavelId = novoResponsavel) {
     if (!isAdmin || changing) return
     setChanging(true)
     const { data, error } = await supabase.rpc('atribuir_lead', {
-      p_id: form.id, p_responsavel: novoResponsavel || null, p_versao: form.atualizado_em,
+      p_id: form.id, p_responsavel: responsavelId || null, p_versao: form.atualizado_em,
     })
     setChanging(false)
     if (error || !data) { toast.show(error?.message || 'Não foi possível atribuir.', 'error'); notifyLeadsChanged(); onClose(); return }
     setForm(data as Lead)
-    toast.show(novoResponsavel ? 'Responsável atualizado.' : 'Lead devolvido à fila comum.')
+    setDirecionando(false)
+    toast.show(responsavelId ? 'Responsável atualizado.' : 'Lead devolvido à fila comum.')
     notifyLeadsChanged()
+  }
+
+  async function handleIniciarAtendimento() {
+    if (isAdmin) { setDirecionando(true); return }
+    await handleEstadoChange('Contactado')
   }
 
   async function handleAddNota() {
@@ -164,28 +171,74 @@ export default function LeadSheet({ lead, initialTab = 'detalhes', onClose }: Pr
         {tab === 'detalhes' && <div className="p-5 space-y-5">
           <div className="rounded-lg bg-sand p-3 space-y-2">
             <Responsavel lead={form} />
-            {isAdmin && <>
+
+            {!form.atribuido_a && !direcionando && (
+              <button
+                onClick={handleIniciarAtendimento}
+                disabled={changing}
+                className="w-full rounded-lg bg-teal text-white text-sm font-semibold py-2.5 hover:brightness-105 transition disabled:opacity-50"
+              >
+                {changing ? 'A iniciar…' : 'Iniciar atendimento'}
+              </button>
+            )}
+
+            {!form.atribuido_a && direcionando && (
+              <div className="space-y-2">
+                <button
+                  onClick={() => handleAtribuir(session?.user.id ?? '')}
+                  disabled={changing}
+                  className="w-full rounded-lg bg-teal text-white text-sm font-semibold py-2.5 hover:brightness-105 transition disabled:opacity-50"
+                >
+                  Assumir para si
+                </button>
+                <div className="flex gap-2">
+                  <select
+                    aria-label="Direcionar para"
+                    value={novoResponsavel}
+                    onChange={e => setNovoResponsavel(e.target.value)}
+                    className="flex-1 border rounded-lg p-2 text-sm"
+                  >
+                    <option value="">Escolher gestor…</option>
+                    {responsaveis.filter(p => p.id !== session?.user.id).map(p => (
+                      <option key={p.id} value={p.id} disabled={!p.ativo}>{p.nome}{!p.ativo ? ' (desativado)' : ''}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => handleAtribuir()}
+                    disabled={changing || !novoResponsavel}
+                    className="rounded-lg bg-navy text-sand text-sm font-medium px-3 disabled:opacity-40"
+                  >
+                    Direcionar
+                  </button>
+                </div>
+                <button onClick={() => setDirecionando(false)} className="text-xs text-navy/50 hover:underline">Cancelar</button>
+              </div>
+            )}
+
+            {form.atribuido_a && isAdmin && <>
               <label className="block text-xs text-navy/60">Responsável
                 <select aria-label="Responsável" value={novoResponsavel} onChange={e => setNovoResponsavel(e.target.value)} className="w-full mt-1 border rounded-lg p-2 text-sm">
                   <option value="">Fila comum (Novo)</option>
                   {responsaveis.map(p => <option key={p.id} value={p.id} disabled={!p.ativo}>{p.nome}{!p.ativo ? ' (desativado)' : ''}</option>)}
                 </select>
               </label>
-              <button disabled={changing || (novoResponsavel === (form.atribuido_a ?? '') && form.estado === 'Novo')} onClick={handleAtribuir} className="text-sm text-teal underline disabled:opacity-40">{novoResponsavel ? 'Guardar responsável' : 'Devolver à fila comum'}</button>
+              <button disabled={changing || novoResponsavel === (form.atribuido_a ?? '')} onClick={() => handleAtribuir()} className="text-sm text-teal underline disabled:opacity-40">{novoResponsavel ? 'Guardar responsável' : 'Devolver à fila comum'}</button>
             </>}
-            {!canEdit && <p className="text-xs text-navy/60">Mude o estado para Contactado para assumir este lead e poder editar, adicionar notas e escrever mensagens.</p>}
+            {!canEdit && form.atribuido_a && <p className="text-xs text-navy/60">Só quem está atribuído a este lead (ou o admin) pode editar, adicionar notas e escrever mensagens.</p>}
           </div>
-          <div>
-            <label className="block text-xs font-medium text-navy/60 mb-1">Estado</label>
-            <select
-              disabled={changing || (isAdmin && !form.atribuido_a)}
-              value={form.estado}
-              onChange={(e) => handleEstadoChange(e.target.value as Estado)}
-              className="w-full rounded-lg border border-navy/15 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold"
-            >
-              {ESTADOS.map((estado) => <option key={estado} value={estado}>{estado}</option>)}
-            </select>
-          </div>
+          {form.atribuido_a && (
+            <div>
+              <label className="block text-xs font-medium text-navy/60 mb-1">Estado</label>
+              <select
+                disabled={changing}
+                value={form.estado}
+                onChange={(e) => handleEstadoChange(e.target.value as Estado)}
+                className="w-full rounded-lg border border-navy/15 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold"
+              >
+                {ESTADOS.map((estado) => <option key={estado} value={estado}>{estado}</option>)}
+              </select>
+            </div>
+          )}
 
           <fieldset disabled={!canEdit || saving} className="space-y-5 disabled:opacity-60">
           <div className="grid grid-cols-2 gap-3">

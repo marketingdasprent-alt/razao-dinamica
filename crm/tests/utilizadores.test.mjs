@@ -9,9 +9,14 @@ function setup(options = {}) {
   const client = (_url, _key, config) => ({
     auth: {
       getUser: async token => ({ data: { user: options.invalidToken ? null : { id: 'admin-id' } }, error: options.invalidToken ? {} : null }),
-      admin: { createUser: async (...args) => {
-        calls.push(['create', ...args]); return { data: { user: { id: 'new-id' } }, error: options.createError ? {} : null }
-      } },
+      admin: {
+        createUser: async (...args) => {
+          calls.push(['create', ...args]); return { data: { user: { id: 'new-id' } }, error: options.createError ? {} : null }
+        },
+        updateUserById: async (...args) => {
+          calls.push(['updateUserById', ...args]); return { error: options.updatePwError ? {} : null }
+        },
+      },
     },
     from: table => ({
       select: () => ({ eq: () => ({
@@ -19,6 +24,9 @@ function setup(options = {}) {
         maybeSingle: async () => ({ data: options.existing ? { id: 'existing-id' } : null, error: null }),
       }) }),
       insert: async data => { calls.push(['insert', data]); return { error: options.insertError ? {} : null } },
+      update: data => ({ eq: async (...args) => {
+        calls.push(['update', table, data, ...args]); return { error: options.updateFlagError ? {} : null }
+      } }),
     }),
     rpc: async (...args) => { calls.push(['rpc', config.global?.headers.Authorization, ...args]); return { data: {}, error: options.rpcError ? {} : null } },
   })
@@ -71,4 +79,28 @@ test('Alteração de perfil usa JWT do autor e propaga recusa da transação', a
   assert.equal(app.calls[0][1], 'Bearer test-token')
   assert.equal(app.calls[0][2], 'alterar_perfil')
   assert.equal((await setup({ rpcError: true }).run(request)).statusCode, 409)
+})
+test('Reposição de senha não exige nome/perfil, marca troca obrigatória e não devolve a senha', async () => {
+  const alvo = '00000000-0000-4000-8000-000000000002'
+  const request = { method: 'PATCH', body: { id: alvo, newPassword: 'Nova-Temp-Password-123!' } }
+  const app = setup(); const response = await app.run(request)
+  assert.equal(response.statusCode, 200)
+  assert.equal(app.calls[0][0], 'updateUserById')
+  assert.equal(app.calls[0][1], alvo)
+  assert.equal(app.calls[0][2].password, request.body.newPassword)
+  assert.equal(app.calls[1][0], 'update')
+  assert.equal(app.calls[1][2].exigir_troca_senha, true)
+  assert.ok(!JSON.stringify(response.data).includes(request.body.newPassword))
+})
+test('Reposição de senha recusa senha curta/longa e propaga falhas', async () => {
+  const alvo = '00000000-0000-4000-8000-000000000002'
+  const app = setup()
+  for (const newPassword of ['curta', 'a'.repeat(73)]) {
+    assert.equal((await app.run({ method: 'PATCH', body: { id: alvo, newPassword } })).statusCode, 400)
+  }
+  assert.equal((await app.run({ method: 'PATCH', body: { id: 'nao-e-uuid', newPassword: 'Nova-Temp-Password-123!' } })).statusCode, 400)
+  assert.equal(app.calls.length, 0)
+  const request = { method: 'PATCH', body: { id: alvo, newPassword: 'Nova-Temp-Password-123!' } }
+  assert.equal((await setup({ updatePwError: true }).run(request)).statusCode, 409)
+  assert.equal((await setup({ updateFlagError: true }).run(request)).statusCode, 409)
 })

@@ -34,12 +34,35 @@ export function createHandler({ env = process.env, client = createClient } = {})
         return res.status(403).json({ error: 'Acesso reservado ao administrador.' })
       }
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
-      if (!body || typeof body.nome !== 'string' || !body.nome.trim() || body.nome.trim().length > 120 ||
+      if (!body) return res.status(400).json({ error: 'Pedido inválido.' })
+      const uuidRegex = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i
+
+      if (req.method === 'PATCH' && typeof body.newPassword === 'string') {
+        // Reposição de senha pelo admin: não exige a senha atual da conta
+        // (o admin não a conhece) nem confirma a identidade por email —
+        // por isso a conta fica marcada para trocar a senha no próximo
+        // acesso, igual a uma conta recém-criada.
+        if (typeof body.id !== 'string' || !uuidRegex.test(body.id)) {
+          return res.status(400).json({ error: 'Utilizador inválido.' })
+        }
+        if (body.newPassword.length < 12 || Buffer.byteLength(body.newPassword, 'utf8') > 72) {
+          return res.status(400).json({ error: 'A senha temporária deve ter pelo menos 12 caracteres e no máximo 72 bytes.' })
+        }
+        const { error: pwError } = await admin.auth.admin.updateUserById(body.id, { password: body.newPassword })
+        if (pwError) return res.status(409).json({ error: 'Não foi possível repor a senha. Atualize a página e tente novamente.' })
+        const { error: flagError } = await admin.from('perfis').update({ exigir_troca_senha: true }).eq('id', body.id)
+        if (flagError) {
+          return res.status(409).json({ error: 'A senha foi alterada, mas não foi possível marcar a troca obrigatória. Avise o responsável técnico.' })
+        }
+        return res.status(200).json({ message: 'Senha temporária definida. Entregue-a ao utilizador por um canal privado — ele terá de a trocar no próximo acesso.' })
+      }
+
+      if (typeof body.nome !== 'string' || !body.nome.trim() || body.nome.trim().length > 120 ||
         !['gestor', 'admin'].includes(body.papel)) {
         return res.status(400).json({ error: 'Indique um nome e um perfil válidos.' })
       }
       if (req.method === 'PATCH') {
-        if (typeof body.id !== 'string' || !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(body.id) || typeof body.ativo !== 'boolean') {
+        if (typeof body.id !== 'string' || !uuidRegex.test(body.id) || typeof body.ativo !== 'boolean') {
           return res.status(400).json({ error: 'Utilizador ou estado inválido.' })
         }
         // A operação usa a sessão do autor para voltar a validar privilégios

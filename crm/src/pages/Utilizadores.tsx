@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import type { Perfil } from '@/lib/types'
+import RedefinirSenhaModal from '@/components/crm/RedefinirSenhaModal'
 
 const field = 'w-full rounded-lg border border-navy/15 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-gold outline-none'
 
@@ -18,6 +19,7 @@ export default function Utilizadores() {
   const [papel, setPapel] = useState<'admin' | 'gestor'>('gestor')
   const [password, setPassword] = useState('')
   const [ativo, setAtivo] = useState(true)
+  const [resetAlvo, setResetAlvo] = useState<Perfil | null>(null)
 
   async function load() {
     setLoading(true)
@@ -58,6 +60,21 @@ export default function Utilizadores() {
     } finally { setBusy(false) }
   }
 
+  async function handleResetPassword(novaSenha: string) {
+    const { data: current } = await supabase.auth.getSession()
+    if (!current.session) throw new Error('Inicie sessão novamente.')
+    const response = await fetch('/api/utilizadores', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${current.session.access_token}` },
+      body: JSON.stringify({ id: resetAlvo?.id, newPassword: novaSenha }),
+    })
+    const result = await response.json()
+    if (!response.ok) throw new Error(result.error || 'Não foi possível repor a senha.')
+    setResetAlvo(null)
+    setError('')
+    setMessage(result.message)
+  }
+
   return <div className="space-y-5">
     <div><h1 className="font-display text-2xl font-bold text-navy">Utilizadores</h1>
       <p className="mt-1 text-sm text-navy/60">Crie as contas da equipa e controle o acesso ao CRM.</p></div>
@@ -70,7 +87,10 @@ export default function Utilizadores() {
             <div className="min-w-0 flex-1"><p className="font-medium text-navy break-words">{user.nome}</p>
               <p className="text-xs text-navy/50 break-all">{user.email}</p>
               <p className="mt-1 text-xs text-teal">{user.papel === 'admin' ? 'Administrador' : 'Gestor'} · {user.ativo ? 'Ativo' : 'Desativado'}</p></div>
-            <button disabled={busy} onClick={() => select(user)} className="text-sm text-teal underline">Editar</button>
+            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+              <button disabled={busy} onClick={() => select(user)} className="text-sm text-teal underline">Editar</button>
+              <button disabled={busy} onClick={() => setResetAlvo(user)} className="text-xs text-navy/50 underline hover:text-navy">Repor senha</button>
+            </div>
           </div>)}
       </section>
       <form onSubmit={submit} className="bg-white rounded-xl border border-navy/10 p-5 space-y-4">
@@ -86,5 +106,13 @@ export default function Utilizadores() {
         {edit && <button type="button" disabled={busy} onClick={() => select(null)} className="w-full text-sm text-navy/60">Cancelar</button>}
       </form>
     </div>
+
+    {resetAlvo && (
+      <RedefinirSenhaModal
+        nome={resetAlvo.nome}
+        onConfirm={handleResetPassword}
+        onClose={() => setResetAlvo(null)}
+      />
+    )}
   </div>
 }

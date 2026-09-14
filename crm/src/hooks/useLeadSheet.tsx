@@ -32,10 +32,23 @@ export function LeadSheetProvider({ children }: { children: ReactNode }) {
       if (error || !data) { setSelected(null); return }
       setSelected(previous => previous?.id === id && previous.atualizado_em !== data.atualizado_em ? data as Lead : previous)
     }
-    const timer = window.setInterval(refresh, 15000)
+    const timer = window.setInterval(refresh, 60000)
     window.addEventListener('focus', refresh)
     window.addEventListener(LEADS_CHANGED_EVENT, refresh)
-    return () => { disposed = true; clearInterval(timer); window.removeEventListener('focus', refresh); window.removeEventListener(LEADS_CHANGED_EVENT, refresh) }
+    // Em tempo real: se outra sessão assumir/reatribuir este mesmo lead
+    // enquanto está aberto aqui, refletimos (ou fechamos) na hora — é o
+    // que evita duas pessoas contactarem o mesmo lead ao mesmo tempo.
+    const channel = supabase
+      .channel('lead-' + id)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads', filter: `id=eq.${id}` }, refresh)
+      .subscribe()
+    return () => {
+      disposed = true
+      clearInterval(timer)
+      window.removeEventListener('focus', refresh)
+      window.removeEventListener(LEADS_CHANGED_EVENT, refresh)
+      supabase.removeChannel(channel)
+    }
   }, [selected?.id])
 
   function openLead(lead: Lead, tab: LeadSheetTab = 'detalhes') {

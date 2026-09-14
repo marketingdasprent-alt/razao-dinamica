@@ -25,7 +25,6 @@ export default function LeadSheet({ lead, initialTab = 'detalhes', onClose }: Pr
   const { session, isAdmin } = useAuth()
   const [responsaveis, setResponsaveis] = useState<Perfil[]>([])
   const [novoResponsavel, setNovoResponsavel] = useState(lead.atribuido_a ?? '')
-  const [direcionando, setDirecionando] = useState(false)
   const [changing, setChanging] = useState(false)
   const [tab, setTab] = useState<Tab>(initialTab)
   const [form, setForm] = useState(lead)
@@ -35,11 +34,22 @@ export default function LeadSheet({ lead, initialTab = 'detalhes', onClose }: Pr
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const canEdit = isAdmin || form.atribuido_a === session?.user.id
-  useEffect(() => { setForm(lead); setNovoResponsavel(lead.atribuido_a ?? ''); setDirecionando(false) }, [lead])
+  useEffect(() => { setForm(lead); setNovoResponsavel(lead.atribuido_a ?? '') }, [lead])
   useEffect(() => {
     if (isAdmin) supabase.from('perfis').select('*').order('nome').then(({ data }) => setResponsaveis((data as Perfil[]) ?? []))
   }, [isAdmin])
   useEffect(() => { setTab(initialTab) }, [lead.id, initialTab])
+
+  // Um gestor a abrir um lead da fila comum já o assume — sem botão nem
+  // confirmação. É deliberado: quem abre por curiosidade fica com o lead.
+  useEffect(() => {
+    if (isAdmin || lead.atribuido_a) return
+    let cancelado = false
+    mudarEstado(lead, 'Contactado')
+      .then((atualizado) => { if (!cancelado) { setForm(atualizado); notifyLeadsChanged() } })
+      .catch(() => { if (!cancelado) { toast.show('Este lead já não está disponível.', 'error'); notifyLeadsChanged(); onClose() } })
+    return () => { cancelado = true }
+  }, [lead.id])
 
   useEffect(() => {
     supabase
@@ -95,14 +105,8 @@ export default function LeadSheet({ lead, initialTab = 'detalhes', onClose }: Pr
     setChanging(false)
     if (error || !data) { toast.show(error?.message || 'Não foi possível atribuir.', 'error'); notifyLeadsChanged(); onClose(); return }
     setForm(data as Lead)
-    setDirecionando(false)
     toast.show(responsavelId ? 'Responsável atualizado.' : 'Lead devolvido à fila comum.')
     notifyLeadsChanged()
-  }
-
-  async function handleIniciarAtendimento() {
-    if (isAdmin) { setDirecionando(true); return }
-    await handleEstadoChange('Contactado')
   }
 
   async function handleAddNota() {
@@ -172,17 +176,11 @@ export default function LeadSheet({ lead, initialTab = 'detalhes', onClose }: Pr
           <div className="rounded-lg bg-sand p-3 space-y-2">
             <Responsavel lead={form} />
 
-            {!form.atribuido_a && !direcionando && (
-              <button
-                onClick={handleIniciarAtendimento}
-                disabled={changing}
-                className="w-full rounded-lg bg-teal text-white text-sm font-semibold py-2.5 hover:brightness-105 transition disabled:opacity-50"
-              >
-                {changing ? 'A iniciar…' : 'Iniciar atendimento'}
-              </button>
+            {!form.atribuido_a && !isAdmin && (
+              <p className="text-xs text-navy/50">A atribuir a si…</p>
             )}
 
-            {!form.atribuido_a && direcionando && (
+            {!form.atribuido_a && isAdmin && (
               <div className="space-y-2">
                 <button
                   onClick={() => handleAtribuir(session?.user.id ?? '')}
@@ -211,7 +209,6 @@ export default function LeadSheet({ lead, initialTab = 'detalhes', onClose }: Pr
                     Direcionar
                   </button>
                 </div>
-                <button onClick={() => setDirecionando(false)} className="text-xs text-navy/50 hover:underline">Cancelar</button>
               </div>
             )}
 

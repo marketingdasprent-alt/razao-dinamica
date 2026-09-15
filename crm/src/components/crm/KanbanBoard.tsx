@@ -1,6 +1,5 @@
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
-import { useDroppable } from '@dnd-kit/core'
-import { useDraggable } from '@dnd-kit/core'
+import Responsavel from './Responsavel'
+import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
 import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { pt } from 'date-fns/locale'
@@ -111,6 +110,7 @@ function LeadCard({ lead, dragging }: { lead: Lead; dragging?: boolean }) {
         </div>
         {stale && <span className="w-2 h-2 rounded-full bg-red-500 mt-1 flex-shrink-0" title="Sem contacto há mais de 2 dias" />}
       </div>
+      <div className="mt-2"><Responsavel lead={lead} /></div>
       <div className="flex items-center justify-between mt-2.5">
         {lead.servico ? (
           <span className="text-[10px] text-teal font-medium truncate bg-teal/10 rounded-full px-2 py-0.5">{lead.servico}</span>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import type { Lead } from '@/lib/types'
+import { LEAD_COM_RESPONSAVEL, type Lead } from '@/lib/types'
 import Avatar from '@/components/crm/Avatar'
 
 export default function CommandPalette({ onOpenLead }: { onOpenLead: (lead: Lead) => void }) {
@@ -24,7 +24,7 @@ export default function CommandPalette({ onOpenLead }: { onOpenLead: (lead: Lead
 
   useEffect(() => {
     if (!open) return
-    supabase.from('leads').select('*').order('criado_em', { ascending: false }).limit(200).then(({ data }) => {
+    supabase.from('leads').select(LEAD_COM_RESPONSAVEL).order('criado_em', { ascending: false }).limit(200).then(({ data }) => {
       setLeads((data as Lead[]) ?? [])
     })
   }, [open])

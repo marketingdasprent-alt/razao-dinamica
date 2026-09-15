@@ -1,0 +1,11 @@
+-- Executar uma vez, no SQL Editor do Supabase.
+--
+-- Liga a tabela "leads" à publicação de Realtime do Supabase. Sem isto, o
+-- CRM só saberia que um lead mudou de dono/estado na próxima vez que
+-- fizesse polling (até 60s) — o que abre uma janela onde duas pessoas
+-- podem assumir o mesmo lead sem se aperceberem uma da outra.
+--
+-- A segurança não muda: o Supabase Realtime respeita as mesmas políticas
+-- de RLS já existentes em "leads" — cada sessão só recebe eventos dos
+-- leads que já podia SELECT normalmente.
+alter publication supabase_realtime add table public.leads;

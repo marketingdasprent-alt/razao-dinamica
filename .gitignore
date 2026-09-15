@@ -10,6 +10,7 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
+!.env.server.example
 .idea/
 .vscode/*
 !.vscode/extensions.json

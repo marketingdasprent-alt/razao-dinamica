@@ -4,21 +4,22 @@ import { useAuth } from '@/hooks/useAuth'
 import { useLeadSheet } from '@/hooks/useLeadSheet'
 import CommandPalette from '@/components/CommandPalette'
 import LeadSheet from '@/components/crm/LeadSheet'
+import logo from '@/assets/logo-razao-dinamica.png'
 
 const linkBase = 'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors'
 const linkActive = 'bg-gold text-navy'
 const linkInactive = 'text-sand/70 hover:bg-white/10 hover:text-sand'
+const navLinkClass = ({ isActive }: { isActive: boolean }) => `${linkBase} ${isActive ? linkActive : linkInactive}`
 
 export default function Layout() {
-  const { session } = useAuth()
-  const { selected, openLead, closeLead } = useLeadSheet()
+  const { session, isAdmin } = useAuth()
+  const { selected, initialTab, openLead, closeLead } = useLeadSheet()
 
   return (
-    <div className="min-h-screen flex bg-sand">
-      <aside className="w-56 flex-shrink-0 bg-navy text-sand flex flex-col">
-        <div className="px-4 py-5">
-          <div className="font-display font-extrabold text-base leading-none">Razão Dinâmica</div>
-          <div className="font-mono text-[9px] tracking-widest uppercase text-gold mt-1">CRM de leads</div>
+    <div className="min-h-screen flex flex-col md:flex-row bg-sand">
+      <aside className="w-full md:w-56 flex-shrink-0 bg-navy text-sand flex flex-col">
+        <div className="px-4 py-6">
+          <img src={logo} alt="Razão Dinâmica" className="h-9 w-auto" />
         </div>
 
         <button
@@ -30,20 +31,27 @@ export default function Layout() {
           <kbd className="ml-auto font-mono text-[10px] bg-white/10 rounded px-1.5 py-0.5">⌘K</kbd>
         </button>
 
-        <nav className="flex-1 flex flex-col gap-1 px-3">
-          <NavLink to="/" end className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}>
+        <nav className="flex-1 flex flex-row flex-wrap md:flex-col gap-1 px-3">
+          <NavLink to="/" end className={navLinkClass}>
             <GridIcon /> Dashboard
           </NavLink>
-          <NavLink to="/leads" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}>
+          <NavLink to="/leads" className={navLinkClass}>
             <UsersIcon /> Leads
           </NavLink>
+          <NavLink to="/chats" className={navLinkClass}>
+            <ChatIcon /> Chats
+          </NavLink>
+          {isAdmin && <NavLink to="/atividade" className={navLinkClass}>
+            <ActivityIcon /> Atividade
+          </NavLink>}
+          {isAdmin && <NavLink to="/utilizadores" className={navLinkClass}><UsersIcon /> Utilizadores</NavLink>}
         </nav>
 
-        <div className="px-3 py-4 border-t border-white/10">
-          <div className="text-[11px] text-sand/40 truncate px-1 mb-2">{session?.user.email}</div>
+        <div className="px-3 py-4 border-t border-white/10 text-center">
+          <div className="text-[11px] text-gold font-medium truncate px-1 mb-2">{session?.user.email}</div>
           <button
             onClick={() => supabase.auth.signOut()}
-            className="w-full text-left px-3 py-2 rounded-lg text-xs text-sand/60 hover:bg-white/10 hover:text-sand transition-colors"
+            className="mx-auto inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs text-sand/70 hover:bg-white/10 hover:text-sand hover:border-white/25 transition-colors"
           >
             Terminar sessão
           </button>
@@ -51,13 +59,13 @@ export default function Layout() {
       </aside>
 
       <main className="flex-1 min-w-0">
-        <div className="max-w-6xl mx-auto px-6 py-6">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 py-6">
           <Outlet />
         </div>
       </main>
 
       <CommandPalette onOpenLead={openLead} />
-      {selected && <LeadSheet lead={selected} onClose={closeLead} />}
+      {selected && <LeadSheet key={selected.id} lead={selected} initialTab={initialTab} onClose={closeLead} />}
     </div>
   )
 }
@@ -70,4 +78,10 @@ function GridIcon() {
 }
 function UsersIcon() {
   return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+}
+function ChatIcon() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+}
+function ActivityIcon() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
 }

@@ -2,28 +2,18 @@ import { useState, type FormEvent } from 'react'
 import { supabase } from '@/lib/supabase'
 
 export default function Login() {
-  const [mode, setMode] = useState<'login' | 'signup'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [info, setInfo] = useState('')
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError('')
-    setInfo('')
     setLoading(true)
     try {
-      if (mode === 'login') {
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-        if (signInError) throw signInError
-      } else {
-        const { error: signUpError } = await supabase.auth.signUp({ email, password })
-        if (signUpError) throw signUpError
-        setInfo('Conta criada. Se pedir confirmação por email, verifique a caixa de entrada — caso contrário já pode entrar.')
-        setMode('login')
-      }
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+      if (signInError) throw signInError
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Ocorreu um erro.'
       setError(
@@ -67,29 +57,22 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-lg border border-navy/15 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold"
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              autoComplete="current-password"
             />
           </div>
 
           {error && <p className="text-xs text-red-600">{error}</p>}
-          {info && <p className="text-xs text-teal">{info}</p>}
 
           <button
             type="submit"
             disabled={loading}
             className="w-full rounded-lg bg-gold text-navy font-semibold text-sm py-2.5 hover:brightness-95 transition disabled:opacity-60"
           >
-            {loading ? 'A processar…' : mode === 'login' ? 'Entrar' : 'Criar conta'}
+            {loading ? 'A processar…' : 'Entrar'}
           </button>
         </form>
 
-        <button
-          type="button"
-          onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setInfo('') }}
-          className="mt-5 w-full text-center text-xs text-navy/60 hover:text-navy underline underline-offset-2"
-        >
-          {mode === 'login' ? 'Primeira utilização? Criar conta de administrador' : 'Já tenho conta — iniciar sessão'}
-        </button>
+        <p className="mt-5 text-center text-xs text-navy/60">O acesso é criado pelo administrador da sua equipa.</p>
       </div>
     </div>
   )

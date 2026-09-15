@@ -12,9 +12,9 @@
 -- passa a valer depois de o lead já estar atribuído a alguém.
 begin;
 
-alter table public.perfis add column pode_editar_leads boolean not null default false;
+alter table public.perfis add column if not exists pode_editar_leads boolean not null default false;
 
-create function crm_private.pode_editar_leads() returns boolean
+create or replace function crm_private.pode_editar_leads() returns boolean
 language sql stable security definer set search_path = '' as $$
   select exists(select 1 from public.perfis where id = auth.uid() and pode_editar_leads);
 $$;
@@ -100,7 +100,7 @@ $$;
 -- permissão de edição como desligada; para preservar um valor já
 -- concedido, passe o 5º argumento explicitamente).
 drop function if exists public.alterar_perfil(uuid, text, text, boolean);
-create function public.alterar_perfil(p_id uuid, p_nome text, p_papel text, p_ativo boolean, p_pode_editar boolean default false)
+create or replace function public.alterar_perfil(p_id uuid, p_nome text, p_papel text, p_ativo boolean, p_pode_editar boolean default false)
 returns public.perfis language plpgsql security definer set search_path = '' as $$
 declare resultado public.perfis;
 begin

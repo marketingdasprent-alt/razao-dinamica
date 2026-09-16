@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import type { Perfil } from '@/lib/types'
 import RedefinirSenhaModal from '@/components/crm/RedefinirSenhaModal'
+import ConfirmPasswordModal from '@/components/crm/ConfirmPasswordModal'
 
 const field = 'w-full rounded-lg border border-navy/15 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-gold outline-none'
 
@@ -21,6 +22,7 @@ export default function Utilizadores() {
   const [ativo, setAtivo] = useState(true)
   const [podeEditar, setPodeEditar] = useState(false)
   const [resetAlvo, setResetAlvo] = useState<Perfil | null>(null)
+  const [excluirAlvo, setExcluirAlvo] = useState<Perfil | null>(null)
 
   async function load() {
     setLoading(true)
@@ -77,6 +79,22 @@ export default function Utilizadores() {
     setMessage(result.message)
   }
 
+  async function handleExcluir() {
+    const { data: current } = await supabase.auth.getSession()
+    if (!current.session) throw new Error('Inicie sessão novamente.')
+    const response = await fetch('/api/utilizadores', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${current.session.access_token}` },
+      body: JSON.stringify({ id: excluirAlvo?.id }),
+    })
+    const result = await response.json()
+    if (!response.ok) throw new Error(result.error || 'Não foi possível excluir.')
+    setExcluirAlvo(null)
+    setError('')
+    setMessage(result.message)
+    await load()
+  }
+
   return <div className="space-y-5">
     <div><h1 className="font-display text-2xl font-bold text-navy">Utilizadores</h1>
       <p className="mt-1 text-sm text-navy/60">Crie as contas da equipa e controle o acesso ao CRM.</p></div>
@@ -92,6 +110,7 @@ export default function Utilizadores() {
             <div className="flex flex-col items-end gap-1 flex-shrink-0">
               <button disabled={busy} onClick={() => select(user)} className="text-sm text-teal underline">Editar</button>
               <button disabled={busy} onClick={() => setResetAlvo(user)} className="text-xs text-navy/50 underline hover:text-navy">Repor senha</button>
+              <button disabled={busy} onClick={() => setExcluirAlvo(user)} className="text-xs text-red-500 underline hover:text-red-600">Excluir</button>
             </div>
           </div>)}
       </section>
@@ -118,6 +137,16 @@ export default function Utilizadores() {
         nome={resetAlvo.nome}
         onConfirm={handleResetPassword}
         onClose={() => setResetAlvo(null)}
+      />
+    )}
+
+    {excluirAlvo && (
+      <ConfirmPasswordModal
+        title="Excluir utilizador"
+        description={`Esta ação remove o acesso de ${excluirAlvo.nome} ao CRM permanentemente. Introduza a sua palavra-passe para confirmar.`}
+        confirmLabel="Excluir"
+        onConfirm={handleExcluir}
+        onClose={() => setExcluirAlvo(null)}
       />
     )}
   </div>

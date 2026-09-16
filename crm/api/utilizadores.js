@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 export function createHandler({ env = process.env, client = createClient } = {}) {
   return async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store')
-    if (!['POST', 'PATCH'].includes(req.method)) {
-      res.setHeader('Allow', 'POST, PATCH')
+    if (!['POST', 'PATCH', 'DELETE'].includes(req.method)) {
+      res.setHeader('Allow', 'POST, PATCH, DELETE')
       return res.status(405).json({ error: 'Método não permitido.' })
     }
     const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRM_SITE_URL, VERCEL_URL } = env
@@ -36,6 +36,28 @@ export function createHandler({ env = process.env, client = createClient } = {})
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
       if (!body) return res.status(400).json({ error: 'Pedido inválido.' })
       const uuidRegex = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i
+
+      if (req.method === 'DELETE') {
+        if (typeof body.id !== 'string' || !uuidRegex.test(body.id)) {
+          return res.status(400).json({ error: 'Utilizador inválido.' })
+        }
+        // excluir_perfil() já recusa o último administrador ativo e
+        // qualquer utilizador que ainda tenha leads em nome dele.
+        const caller = client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+          global: { headers: { Authorization: `Bearer ${token}` } },
+          auth: { persistSession: false, autoRefreshToken: false },
+        })
+        const { error: rpcError } = await caller.rpc('excluir_perfil', { p_id: body.id })
+        if (rpcError) return res.status(409).json({ error: rpcError.message || 'Não foi possível excluir. Atualize a página e tente novamente.' })
+        const { error: authError } = await admin.auth.admin.deleteUser(body.id)
+        if (authError) {
+          // O perfil já foi removido, então a conta perdeu acesso ao CRM
+          // mesmo que a conta de autenticação em si ainda exista (falha
+          // fechada) — mas precisa de limpeza manual para não ficar órfã.
+          return res.status(409).json({ error: 'O perfil foi removido, mas a conta de acesso não pôde ser apagada. O acesso já está bloqueado; avise o responsável técnico para limpar a conta.' })
+        }
+        return res.status(200).json({ message: 'Utilizador excluído.' })
+      }
 
       if (req.method === 'PATCH' && typeof body.newPassword === 'string') {
         // Reposição de senha pelo admin: não exige a senha atual da conta

@@ -16,6 +16,9 @@ function setup(options = {}) {
         updateUserById: async (...args) => {
           calls.push(['updateUserById', ...args]); return { error: options.updatePwError ? {} : null }
         },
+        deleteUser: async (...args) => {
+          calls.push(['deleteUser', ...args]); return { error: options.deleteUserError ? {} : null }
+        },
       },
     },
     from: table => ({
@@ -31,7 +34,11 @@ function setup(options = {}) {
         return { error: null }
       } }),
     }),
-    rpc: async (...args) => { calls.push(['rpc', config.global?.headers.Authorization, ...args]); return { data: {}, error: options.rpcError ? {} : null } },
+    rpc: async (name, params) => {
+      calls.push(['rpc', config.global?.headers.Authorization, name, params])
+      if (name === 'excluir_perfil') return { data: null, error: options.deleteRpcError ? { message: options.deleteRpcMessage } : null }
+      return { data: {}, error: options.rpcError ? {} : null }
+    },
   })
   const handler = createHandler({ env: options.noConfig ? {} : env, client })
   async function run(overrides = {}) {
@@ -129,6 +136,37 @@ test('Se nem a desativação de segurança for possível, o aviso é mais urgent
   const request = { method: 'PATCH', body: { id: alvo, newPassword: 'Nova-Temp-Password-123!' } }
   const app = setup({ updateFlagError: true, lockError: true })
   const response = await app.run(request)
+  assert.equal(response.statusCode, 409)
+  assert.match(response.data.error, /responsável técnico/)
+})
+test('Exclusão usa o JWT do autor e apaga a conta de acesso depois do perfil', async () => {
+  const alvo = '00000000-0000-4000-8000-000000000002'
+  const app = setup()
+  const response = await app.run({ method: 'DELETE', body: { id: alvo } })
+  assert.equal(response.statusCode, 200)
+  assert.equal(app.calls[0][1], 'Bearer test-token')
+  assert.equal(app.calls[0][2], 'excluir_perfil')
+  assert.deepEqual(app.calls[0][3], { p_id: alvo })
+  assert.equal(app.calls[1][0], 'deleteUser')
+  assert.equal(app.calls[1][1], alvo)
+})
+test('Exclusão recusa id inválido sem chamar o banco', async () => {
+  const app = setup()
+  assert.equal((await app.run({ method: 'DELETE', body: { id: 'nao-e-uuid' } })).statusCode, 400)
+  assert.equal(app.calls.length, 0)
+})
+test('Exclusão propaga a recusa do RPC (último admin ou leads por reatribuir)', async () => {
+  const alvo = '00000000-0000-4000-8000-000000000002'
+  const app = setup({ deleteRpcError: true, deleteRpcMessage: 'Este utilizador tem 2 lead(s) atribuído(s). Reatribua-os antes de excluir.' })
+  const response = await app.run({ method: 'DELETE', body: { id: alvo } })
+  assert.equal(response.statusCode, 409)
+  assert.match(response.data.error, /Reatribua-os/)
+  assert.equal(app.calls.length, 1)
+})
+test('Exclusão avisa se o perfil saiu mas a conta de acesso não pôde ser apagada', async () => {
+  const alvo = '00000000-0000-4000-8000-000000000002'
+  const app = setup({ deleteUserError: true })
+  const response = await app.run({ method: 'DELETE', body: { id: alvo } })
   assert.equal(response.statusCode, 409)
   assert.match(response.data.error, /responsável técnico/)
 })

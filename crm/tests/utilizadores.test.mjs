@@ -40,7 +40,13 @@ function setup(options = {}) {
       return { data: {}, error: options.rpcError ? {} : null }
     },
   })
-  const handler = createHandler({ env: options.noConfig ? {} : env, client })
+  const fetchImpl = async (...args) => {
+    calls.push(['fetch', ...args])
+    if (options.emailNetworkError) throw new Error('network down')
+    return { ok: !options.emailSendError }
+  }
+  const finalEnv = options.noConfig ? {} : { ...env, ...(options.brevoApiKey ? { BREVO_API_KEY: options.brevoApiKey } : {}) }
+  const handler = createHandler({ env: finalEnv, client, fetchImpl })
   async function run(overrides = {}) {
     const response = { statusCode: 200, headers: {}, setHeader(k, v) { this.headers[k] = v }, status(code) { this.statusCode = code; return this }, json(data) { this.data = data; return this } }
     await handler({ method: 'POST', headers: { authorization: 'Bearer test-token', origin: 'https://crm.test' }, body, ...overrides }, response)
@@ -76,6 +82,29 @@ test('Criação direta exige troca da senha e não envia convite', async () => {
   assert.ok(!JSON.stringify(response.data).includes(body.password))
   assert.equal(app.calls[1][1].papel, 'gestor')
   assert.ok(!JSON.stringify(response.data).includes(env.SUPABASE_SERVICE_ROLE_KEY))
+  assert.match(response.data.message, /canal privado/)
+  assert.equal(app.calls.length, 2)
+})
+test('Com BREVO_API_KEY configurada, envia o email de boas-vindas com a senha e avisa no retorno', async () => {
+  const app = setup({ brevoApiKey: 'brevo-test-key' })
+  const response = await app.run()
+  assert.equal(response.statusCode, 201)
+  assert.match(response.data.message, /email/)
+  assert.equal(app.calls[2][0], 'fetch')
+  assert.equal(app.calls[2][1], 'https://api.brevo.com/v3/smtp/email')
+  assert.equal(app.calls[2][2].headers['api-key'], 'brevo-test-key')
+  const payload = JSON.parse(app.calls[2][2].body)
+  assert.equal(payload.to[0].email, body.email)
+  assert.match(payload.htmlContent, new RegExp(body.password))
+  assert.ok(!JSON.stringify(response.data).includes(body.password))
+})
+test('Falha ao enviar o email de boas-vindas não impede a criação da conta', async () => {
+  for (const options of [{ brevoApiKey: 'k', emailSendError: true }, { brevoApiKey: 'k', emailNetworkError: true }]) {
+    const app = setup(options)
+    const response = await app.run()
+    assert.equal(response.statusCode, 201)
+    assert.match(response.data.message, /canal privado/)
+  }
 })
 test('Conta duplicada, falha no Auth e falha parcial não aparentam sucesso', async () => {
   for (const options of [{ existing: true }, { createError: true }, { insertError: true }]) {

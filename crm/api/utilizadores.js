@@ -1,6 +1,39 @@
 import { createClient } from '@supabase/supabase-js'
 
-export function createHandler({ env = process.env, client = createClient } = {}) {
+// Envia a senha temporária por email via Brevo, se BREVO_API_KEY estiver
+// configurada. Best-effort: nunca impede a criação da conta, que já está
+// concluída nesse ponto — só muda a mensagem devolvida ao admin, para ele
+// saber se ainda precisa de entregar a senha manualmente.
+async function enviarEmailBoasVindas({ env, fetchImpl, nome, email, password, crmUrl }) {
+  if (!env.BREVO_API_KEY) return false
+  try {
+    const response = await fetchImpl('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'api-key': env.BREVO_API_KEY },
+      body: JSON.stringify({
+        sender: { name: 'Razão Dinâmica', email: 'geral@razaodinamica.pt' },
+        to: [{ email, name: nome }],
+        subject: 'O seu acesso ao CRM da Razão Dinâmica',
+        htmlContent: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;color:#0B1B2B">
+          <h2 style="color:#0B1B2B">Razão Dinâmica · CRM</h2>
+          <p>Olá, ${nome}.</p>
+          <p>A sua conta no CRM da Razão Dinâmica foi criada. Use os dados abaixo para aceder:</p>
+          <table style="margin:16px 0"><tr><td style="padding:4px 8px;color:#666">Email</td><td style="padding:4px 8px"><strong>${email}</strong></td></tr>
+          <tr><td style="padding:4px 8px;color:#666">Senha temporária</td><td style="padding:4px 8px"><strong>${password}</strong></td></tr></table>
+          <p><a href="${crmUrl}" style="background:#CBA968;color:#0B1B2B;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600">Aceder ao CRM</a></p>
+          <p style="font-size:13px;color:#666">Por segurança, vai ser pedido para definir uma senha nova no primeiro acesso.</p>
+          <p style="font-size:13px;color:#666">Se não esperava este email, ignore-o ou contacte a administração.</p>
+        </div>`,
+        textContent: `Olá, ${nome}.\n\nA sua conta no CRM da Razão Dinâmica foi criada.\nEmail: ${email}\nSenha temporária: ${password}\nAceda em: ${crmUrl}\n\nPor segurança, vai ser pedido para definir uma senha nova no primeiro acesso.`,
+      }),
+    })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+export function createHandler({ env = process.env, client = createClient, fetchImpl = fetch } = {}) {
   return async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store')
     if (!['POST', 'PATCH', 'DELETE'].includes(req.method)) {
@@ -131,7 +164,14 @@ export function createHandler({ env = process.env, client = createClient } = {})
         // Não apagar a conta: pode ter sido criada por outro pedido concorrente.
         return res.status(409).json({ error: 'A conta foi criada, mas o perfil não foi guardado. O acesso permanece bloqueado. Peça ao responsável técnico para verificar o perfil antes de repetir.' })
       }
-      return res.status(201).json({ message: 'Conta criada. Entregue a senha temporária ao utilizador por um canal privado. Ele terá de a trocar no primeiro acesso.' })
+      const emailEnviado = await enviarEmailBoasVindas({
+        env, fetchImpl, nome: body.nome.trim(), email, password: body.password, crmUrl: CRM_SITE_URL,
+      })
+      return res.status(201).json({
+        message: emailEnviado
+          ? 'Conta criada. Um email com a senha temporária foi enviado ao utilizador — ele terá de a trocar no primeiro acesso.'
+          : 'Conta criada. Entregue a senha temporária ao utilizador por um canal privado. Ele terá de a trocar no primeiro acesso.',
+      })
     } catch {
       return res.status(400).json({ error: 'Não foi possível concluir o pedido. Verifique os dados e tente novamente.' })
     }

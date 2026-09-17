@@ -14,6 +14,14 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState>({ session: null, loading: true, profile: null, isAdmin: false, profileError: '', refreshProfile: async () => {} })
 
+// Mesma lógica do formulário público do site (js/main.js), para o tipo de
+// dispositivo significar a mesma coisa nos dois lugares.
+function detectarTipoDispositivo(): 'mobile' | 'desktop' {
+  const uaData = (navigator as Navigator & { userAgentData?: { mobile?: boolean } }).userAgentData
+  if (uaData && typeof uaData.mobile === 'boolean') return uaData.mobile ? 'mobile' : 'desktop'
+  return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? 'mobile' : 'desktop'
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
@@ -42,6 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       current.current = next
       setSession(next)
       if (changed) { setProfile(null); setLoading(true) }
+      // Só uma vez por login de verdade (não a cada refresh de foco/token) —
+      // best-effort, não bloqueia nem falha visivelmente a sessão.
+      if (changed && next) void supabase.rpc('registar_dispositivo', { p_tipo: detectarTipoDispositivo() })
       setTimeout(() => { if (!disposed) void refreshProfile() }, 0)
     }
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => { authEventSeen = true; accept(next) })

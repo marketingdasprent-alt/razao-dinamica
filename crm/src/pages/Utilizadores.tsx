@@ -134,7 +134,10 @@ export default function Utilizadores() {
             <div className="min-w-0 flex-1"><p className="font-medium text-navy break-words">{user.nome}</p>
               <p className="text-xs text-navy/50 break-all">{user.email}</p>
               <p className="mt-1 text-xs text-teal">{user.papel === 'admin' ? 'Administrador' : 'Gestor'} · {user.ativo ? 'Ativo' : 'Desativado'}</p>
-              <p className="mt-0.5 text-[11px] text-navy/40">Último acesso: {formatUltimoAcesso(ultimosAcessos[user.id])}</p></div>
+              <p className="mt-0.5 text-[11px] text-navy/40">
+                Último acesso: {formatUltimoAcesso(ultimosAcessos[user.id])}
+                {user.ultimo_dispositivo && ` · ${user.ultimo_dispositivo === 'mobile' ? 'Telemóvel' : 'Computador'}`}
+              </p></div>
             <div className="flex flex-col items-end gap-1 flex-shrink-0">
               <button disabled={busy} onClick={() => select(user)} className="text-sm text-teal underline">Editar</button>
               <button disabled={busy} onClick={() => setResetAlvo(user)} className="text-xs text-navy/50 underline hover:text-navy">Repor senha</button>

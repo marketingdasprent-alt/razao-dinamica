@@ -19,6 +19,11 @@ function setup(options = {}) {
         deleteUser: async (...args) => {
           calls.push(['deleteUser', ...args]); return { error: options.deleteUserError ? {} : null }
         },
+        listUsers: async (...args) => {
+          calls.push(['listUsers', ...args])
+          if (options.listUsersError) return { data: null, error: {} }
+          return { data: { users: options.usersList ?? [{ id: 'admin-id', last_sign_in_at: '2026-09-17T10:00:00Z' }] }, error: null }
+        },
       },
     },
     from: table => ({
@@ -55,8 +60,20 @@ function setup(options = {}) {
   return { run, calls }
 }
 test('Método e configuração inválidos não criam contas', async () => {
-  const a = setup(); assert.equal((await a.run({ method: 'GET' })).statusCode, 405); assert.equal(a.calls.length, 0)
+  const a = setup(); assert.equal((await a.run({ method: 'PUT' })).statusCode, 405); assert.equal(a.calls.length, 0)
   const b = setup({ noConfig: true }); assert.equal((await b.run()).statusCode, 503)
+})
+test('GET devolve a data do último acesso de cada conta, só para admin', async () => {
+  const app = setup({ usersList: [{ id: 'a', last_sign_in_at: '2026-09-17T10:00:00Z' }, { id: 'b', last_sign_in_at: null }] })
+  const response = await app.run({ method: 'GET' })
+  assert.equal(response.statusCode, 200)
+  assert.deepEqual(response.data.ultimosAcessos, { a: '2026-09-17T10:00:00Z', b: null })
+  const semAcesso = setup({ profile: { ativo: true, papel: 'gestor' } })
+  assert.equal((await semAcesso.run({ method: 'GET' })).statusCode, 403)
+})
+test('GET propaga falha ao consultar os últimos acessos', async () => {
+  const app = setup({ listUsersError: true })
+  assert.equal((await app.run({ method: 'GET' })).statusCode, 503)
 })
 test('Token ausente, inválido, gestor e admin desativado são recusados', async () => {
   for (const options of [{ invalidToken: true }, { profile: { ativo: true, papel: 'gestor' } }, { profile: { ativo: false, papel: 'admin' } }]) {

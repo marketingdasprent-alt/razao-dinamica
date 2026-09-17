@@ -4,6 +4,8 @@ import { useAuth } from '@/hooks/useAuth'
 import type { Perfil } from '@/lib/types'
 import RedefinirSenhaModal from '@/components/crm/RedefinirSenhaModal'
 import ConfirmPasswordModal from '@/components/crm/ConfirmPasswordModal'
+import { formatDistanceToNow } from 'date-fns'
+import { pt } from 'date-fns/locale'
 
 const field = 'w-full rounded-lg border border-navy/15 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-gold outline-none'
 
@@ -23,6 +25,8 @@ export default function Utilizadores() {
   const [podeEditar, setPodeEditar] = useState(false)
   const [resetAlvo, setResetAlvo] = useState<Perfil | null>(null)
   const [excluirAlvo, setExcluirAlvo] = useState<Perfil | null>(null)
+  const [ultimosAcessos, setUltimosAcessos] = useState<Record<string, string | null>>({})
+  const [acessosCarregados, setAcessosCarregados] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -32,6 +36,29 @@ export default function Utilizadores() {
     setLoading(false)
   }
   useEffect(() => { void load() }, [])
+
+  useEffect(() => {
+    async function loadUltimosAcessos() {
+      const { data: current } = await supabase.auth.getSession()
+      if (!current.session) return
+      const response = await fetch('/api/utilizadores', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${current.session.access_token}` },
+      })
+      if (response.ok) {
+        const result = await response.json()
+        setUltimosAcessos(result.ultimosAcessos ?? {})
+      }
+      setAcessosCarregados(true)
+    }
+    void loadUltimosAcessos()
+  }, [])
+
+  function formatUltimoAcesso(iso: string | null | undefined) {
+    if (!acessosCarregados) return '…'
+    if (!iso) return 'Nunca acedeu'
+    return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: pt })
+  }
 
   function select(user: Perfil | null) {
     setEdit(user); setNome(user?.nome ?? ''); setEmail(user?.email ?? '')
@@ -106,7 +133,8 @@ export default function Utilizadores() {
           <div key={user.id} className="p-4 border-b border-navy/5 flex items-center gap-3">
             <div className="min-w-0 flex-1"><p className="font-medium text-navy break-words">{user.nome}</p>
               <p className="text-xs text-navy/50 break-all">{user.email}</p>
-              <p className="mt-1 text-xs text-teal">{user.papel === 'admin' ? 'Administrador' : 'Gestor'} · {user.ativo ? 'Ativo' : 'Desativado'}</p></div>
+              <p className="mt-1 text-xs text-teal">{user.papel === 'admin' ? 'Administrador' : 'Gestor'} · {user.ativo ? 'Ativo' : 'Desativado'}</p>
+              <p className="mt-0.5 text-[11px] text-navy/40">Último acesso: {formatUltimoAcesso(ultimosAcessos[user.id])}</p></div>
             <div className="flex flex-col items-end gap-1 flex-shrink-0">
               <button disabled={busy} onClick={() => select(user)} className="text-sm text-teal underline">Editar</button>
               <button disabled={busy} onClick={() => setResetAlvo(user)} className="text-xs text-navy/50 underline hover:text-navy">Repor senha</button>

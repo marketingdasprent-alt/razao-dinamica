@@ -96,6 +96,7 @@ test('Com BREVO_API_KEY configurada, envia o email de boas-vindas com a senha e 
   const payload = JSON.parse(app.calls[2][2].body)
   assert.equal(payload.to[0].email, body.email)
   assert.match(payload.htmlContent, new RegExp(body.password))
+  assert.match(payload.htmlContent, /https:\/\/crm\.test\/rd-icon-email\.png/)
   assert.ok(!JSON.stringify(response.data).includes(body.password))
 })
 test('Falha ao enviar o email de boas-vindas não impede a criação da conta', async () => {

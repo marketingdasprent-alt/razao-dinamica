@@ -7,6 +7,10 @@ import { createClient } from '@supabase/supabase-js'
 async function enviarEmailBoasVindas({ env, fetchImpl, nome, email, password, crmUrl }) {
   if (!env.BREVO_API_KEY) return false
   try {
+    // Ícone servido pelo próprio CRM (crm/public/, nunca sofre o hashing de
+    // build da Vercel) — URL estável, ao contrário dos assets do site
+    // institucional, que trocam de nome a cada publicação.
+    const iconUrl = new URL('/rd-icon-email.png', crmUrl).href
     const response = await fetchImpl('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'api-key': env.BREVO_API_KEY },
@@ -23,7 +27,8 @@ async function enviarEmailBoasVindas({ env, fetchImpl, nome, email, password, cr
           <p style="text-align:center;margin:24px 0"><a href="${crmUrl}" style="background:#CBA968;color:#0B1B2B;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block">Aceder ao CRM</a></p>
           <p style="font-size:13px;color:#666">Por segurança, vai ser pedido para definir uma senha nova no primeiro acesso.</p>
           <p style="font-size:13px;color:#666">Se não esperava este email, ignore-o ou contacte a administração.</p>
-          <table style="width:100%;margin-top:32px;border-collapse:collapse"><tr><td style="border-top:1px solid #e5e2d9;padding-top:16px;text-align:center">
+          <table style="width:100%;margin-top:32px;border-collapse:collapse"><tr><td style="border-top:1px solid #e5e2d9;padding-top:20px;text-align:center">
+            <img src="${iconUrl}" width="40" height="40" alt="Razão Dinâmica" style="display:block;margin:0 auto 10px;border:0">
             <p style="font-size:12px;color:#999;margin:0">Razão Dinâmica · Consultoria e Contabilidade</p>
             <p style="font-size:12px;color:#999;margin:4px 0 0"><a href="https://www.razaodinamica.pt" style="color:#4A8288;text-decoration:none">razaodinamica.pt</a> · geral@razaodinamica.pt</p>
           </td></tr></table>

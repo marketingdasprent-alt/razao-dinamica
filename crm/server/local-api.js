@@ -12,7 +12,7 @@ export function localApi(env) {
       res.setHeader('Cache-Control', 'no-store')
       res.end(JSON.stringify(data))
     }
-    if (['POST', 'PATCH'].includes(req.method)) {
+    if (['POST', 'PATCH', 'DELETE'].includes(req.method)) {
       if (!req.headers['content-type']?.toLowerCase().startsWith('application/json')) {
         return reply(415, { error: 'Envie os dados em formato JSON.' })
       }

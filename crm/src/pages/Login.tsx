@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '@/lib/supabase'
+import logo from '@/assets/logo-marca.png'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -31,9 +32,8 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-navy px-4">
       <div className="w-full max-w-sm bg-sand rounded-xl shadow-2xl p-8">
-        <div className="text-center mb-8">
-          <div className="font-display font-extrabold text-xl text-navy">Razão Dinâmica</div>
-          <div className="font-mono text-[10px] tracking-widest uppercase text-teal mt-1">CRM de leads</div>
+        <div className="flex justify-center mb-8">
+          <img src={logo} alt="Razão Dinâmica" className="h-20 w-auto" />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

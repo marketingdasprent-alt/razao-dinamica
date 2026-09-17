@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import { LEAD_COM_RESPONSAVEL, type Lead } from '@/lib/types'
 import Avatar from '@/components/crm/Avatar'
 
@@ -9,6 +10,7 @@ export default function CommandPalette({ onOpenLead }: { onOpenLead: (lead: Lead
   const [query, setQuery] = useState('')
   const [leads, setLeads] = useState<Lead[]>([])
   const navigate = useNavigate()
+  const { isAdmin } = useAuth()
 
   useEffect(() => {
     function handler(e: KeyboardEvent) {
@@ -56,6 +58,9 @@ export default function CommandPalette({ onOpenLead }: { onOpenLead: (lead: Lead
               <div className="px-2.5 py-1 text-[10px] font-mono uppercase tracking-wide text-navy/40">Ir para</div>
               <PaletteItem label="Dashboard" onClick={() => { navigate('/'); setOpen(false) }} />
               <PaletteItem label="Leads" onClick={() => { navigate('/leads'); setOpen(false) }} />
+              <PaletteItem label="Chats" onClick={() => { navigate('/chats'); setOpen(false) }} />
+              {isAdmin && <PaletteItem label="Atividade" onClick={() => { navigate('/atividade'); setOpen(false) }} />}
+              {isAdmin && <PaletteItem label="Utilizadores" onClick={() => { navigate('/utilizadores'); setOpen(false) }} />}
             </div>
           )}
           {results.length > 0 && (

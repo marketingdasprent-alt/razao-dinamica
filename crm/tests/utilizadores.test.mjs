@@ -16,6 +16,9 @@ function setup(options = {}) {
         updateUserById: async (...args) => {
           calls.push(['updateUserById', ...args]); return { error: options.updatePwError ? {} : null }
         },
+        deleteUser: async (...args) => {
+          calls.push(['deleteUser', ...args]); return { error: options.deleteUserError ? {} : null }
+        },
       },
     },
     from: table => ({
@@ -31,9 +34,19 @@ function setup(options = {}) {
         return { error: null }
       } }),
     }),
-    rpc: async (...args) => { calls.push(['rpc', config.global?.headers.Authorization, ...args]); return { data: {}, error: options.rpcError ? {} : null } },
+    rpc: async (name, params) => {
+      calls.push(['rpc', config.global?.headers.Authorization, name, params])
+      if (name === 'excluir_perfil') return { data: null, error: options.deleteRpcError ? { message: options.deleteRpcMessage } : null }
+      return { data: {}, error: options.rpcError ? {} : null }
+    },
   })
-  const handler = createHandler({ env: options.noConfig ? {} : env, client })
+  const fetchImpl = async (...args) => {
+    calls.push(['fetch', ...args])
+    if (options.emailNetworkError) throw new Error('network down')
+    return { ok: !options.emailSendError }
+  }
+  const finalEnv = options.noConfig ? {} : { ...env, ...(options.brevoApiKey ? { BREVO_API_KEY: options.brevoApiKey } : {}) }
+  const handler = createHandler({ env: finalEnv, client, fetchImpl })
   async function run(overrides = {}) {
     const response = { statusCode: 200, headers: {}, setHeader(k, v) { this.headers[k] = v }, status(code) { this.statusCode = code; return this }, json(data) { this.data = data; return this } }
     await handler({ method: 'POST', headers: { authorization: 'Bearer test-token', origin: 'https://crm.test' }, body, ...overrides }, response)
@@ -69,6 +82,29 @@ test('Criação direta exige troca da senha e não envia convite', async () => {
   assert.ok(!JSON.stringify(response.data).includes(body.password))
   assert.equal(app.calls[1][1].papel, 'gestor')
   assert.ok(!JSON.stringify(response.data).includes(env.SUPABASE_SERVICE_ROLE_KEY))
+  assert.match(response.data.message, /canal privado/)
+  assert.equal(app.calls.length, 2)
+})
+test('Com BREVO_API_KEY configurada, envia o email de boas-vindas com a senha e avisa no retorno', async () => {
+  const app = setup({ brevoApiKey: 'brevo-test-key' })
+  const response = await app.run()
+  assert.equal(response.statusCode, 201)
+  assert.match(response.data.message, /email/)
+  assert.equal(app.calls[2][0], 'fetch')
+  assert.equal(app.calls[2][1], 'https://api.brevo.com/v3/smtp/email')
+  assert.equal(app.calls[2][2].headers['api-key'], 'brevo-test-key')
+  const payload = JSON.parse(app.calls[2][2].body)
+  assert.equal(payload.to[0].email, body.email)
+  assert.match(payload.htmlContent, new RegExp(body.password))
+  assert.ok(!JSON.stringify(response.data).includes(body.password))
+})
+test('Falha ao enviar o email de boas-vindas não impede a criação da conta', async () => {
+  for (const options of [{ brevoApiKey: 'k', emailSendError: true }, { brevoApiKey: 'k', emailNetworkError: true }]) {
+    const app = setup(options)
+    const response = await app.run()
+    assert.equal(response.statusCode, 201)
+    assert.match(response.data.message, /canal privado/)
+  }
 })
 test('Conta duplicada, falha no Auth e falha parcial não aparentam sucesso', async () => {
   for (const options of [{ existing: true }, { createError: true }, { insertError: true }]) {
@@ -129,6 +165,37 @@ test('Se nem a desativação de segurança for possível, o aviso é mais urgent
   const request = { method: 'PATCH', body: { id: alvo, newPassword: 'Nova-Temp-Password-123!' } }
   const app = setup({ updateFlagError: true, lockError: true })
   const response = await app.run(request)
+  assert.equal(response.statusCode, 409)
+  assert.match(response.data.error, /responsável técnico/)
+})
+test('Exclusão usa o JWT do autor e apaga a conta de acesso depois do perfil', async () => {
+  const alvo = '00000000-0000-4000-8000-000000000002'
+  const app = setup()
+  const response = await app.run({ method: 'DELETE', body: { id: alvo } })
+  assert.equal(response.statusCode, 200)
+  assert.equal(app.calls[0][1], 'Bearer test-token')
+  assert.equal(app.calls[0][2], 'excluir_perfil')
+  assert.deepEqual(app.calls[0][3], { p_id: alvo })
+  assert.equal(app.calls[1][0], 'deleteUser')
+  assert.equal(app.calls[1][1], alvo)
+})
+test('Exclusão recusa id inválido sem chamar o banco', async () => {
+  const app = setup()
+  assert.equal((await app.run({ method: 'DELETE', body: { id: 'nao-e-uuid' } })).statusCode, 400)
+  assert.equal(app.calls.length, 0)
+})
+test('Exclusão propaga a recusa do RPC (último admin ou leads por reatribuir)', async () => {
+  const alvo = '00000000-0000-4000-8000-000000000002'
+  const app = setup({ deleteRpcError: true, deleteRpcMessage: 'Este utilizador tem 2 lead(s) atribuído(s). Reatribua-os antes de excluir.' })
+  const response = await app.run({ method: 'DELETE', body: { id: alvo } })
+  assert.equal(response.statusCode, 409)
+  assert.match(response.data.error, /Reatribua-os/)
+  assert.equal(app.calls.length, 1)
+})
+test('Exclusão avisa se o perfil saiu mas a conta de acesso não pôde ser apagada', async () => {
+  const alvo = '00000000-0000-4000-8000-000000000002'
+  const app = setup({ deleteUserError: true })
+  const response = await app.run({ method: 'DELETE', body: { id: alvo } })
   assert.equal(response.statusCode, 409)
   assert.match(response.data.error, /responsável técnico/)
 })

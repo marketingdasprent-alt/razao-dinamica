@@ -20,11 +20,15 @@ async function enviarEmailBoasVindas({ env, fetchImpl, nome, email, password, cr
           <p>A sua conta no CRM da Razão Dinâmica foi criada. Use os dados abaixo para aceder:</p>
           <table style="margin:16px 0"><tr><td style="padding:4px 8px;color:#666">Email</td><td style="padding:4px 8px"><strong>${email}</strong></td></tr>
           <tr><td style="padding:4px 8px;color:#666">Senha temporária</td><td style="padding:4px 8px"><strong>${password}</strong></td></tr></table>
-          <p><a href="${crmUrl}" style="background:#CBA968;color:#0B1B2B;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600">Aceder ao CRM</a></p>
+          <p style="text-align:center;margin:24px 0"><a href="${crmUrl}" style="background:#CBA968;color:#0B1B2B;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block">Aceder ao CRM</a></p>
           <p style="font-size:13px;color:#666">Por segurança, vai ser pedido para definir uma senha nova no primeiro acesso.</p>
           <p style="font-size:13px;color:#666">Se não esperava este email, ignore-o ou contacte a administração.</p>
+          <table style="width:100%;margin-top:32px;border-collapse:collapse"><tr><td style="border-top:1px solid #e5e2d9;padding-top:16px;text-align:center">
+            <p style="font-size:12px;color:#999;margin:0">Razão Dinâmica · Consultoria e Contabilidade</p>
+            <p style="font-size:12px;color:#999;margin:4px 0 0"><a href="https://www.razaodinamica.pt" style="color:#4A8288;text-decoration:none">razaodinamica.pt</a> · geral@razaodinamica.pt</p>
+          </td></tr></table>
         </div>`,
-        textContent: `Olá, ${nome}.\n\nA sua conta no CRM da Razão Dinâmica foi criada.\nEmail: ${email}\nSenha temporária: ${password}\nAceda em: ${crmUrl}\n\nPor segurança, vai ser pedido para definir uma senha nova no primeiro acesso.`,
+        textContent: `Olá, ${nome}.\n\nA sua conta no CRM da Razão Dinâmica foi criada.\nEmail: ${email}\nSenha temporária: ${password}\nAceda em: ${crmUrl}\n\nPor segurança, vai ser pedido para definir uma senha nova no primeiro acesso.\n\n--\nRazão Dinâmica · Consultoria e Contabilidade\nrazaodinamica.pt · geral@razaodinamica.pt`,
       }),
     })
     return response.ok

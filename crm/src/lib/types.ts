@@ -66,6 +66,7 @@ export type AcaoEvento = 'apagado' | 'atribuido' | 'reatribuido' | 'devolvido'
 export interface Perfil {
   exigir_troca_senha: boolean
   pode_editar_leads: boolean
+  ultimo_dispositivo: 'mobile' | 'desktop' | null
   id: string
   nome: string
   email: string

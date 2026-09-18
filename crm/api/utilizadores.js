@@ -45,8 +45,8 @@ async function enviarEmailBoasVindas({ env, fetchImpl, nome, email, password, cr
 export function createHandler({ env = process.env, client = createClient, fetchImpl = fetch } = {}) {
   return async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store')
-    if (!['POST', 'PATCH', 'DELETE'].includes(req.method)) {
-      res.setHeader('Allow', 'POST, PATCH, DELETE')
+    if (!['GET', 'POST', 'PATCH', 'DELETE'].includes(req.method)) {
+      res.setHeader('Allow', 'GET, POST, PATCH, DELETE')
       return res.status(405).json({ error: 'Método não permitido.' })
     }
     const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRM_SITE_URL, VERCEL_URL } = env
@@ -75,6 +75,16 @@ export function createHandler({ env = process.env, client = createClient, fetchI
       if (perfilError || !perfil?.ativo || perfil.papel !== 'admin' || perfil.exigir_troca_senha !== false) {
         return res.status(403).json({ error: 'Acesso reservado ao administrador.' })
       }
+
+      if (req.method === 'GET') {
+        // Data do último login já é rastreada pelo próprio Supabase Auth —
+        // só expomos o que já existe, nada de novo para manter.
+        const { data, error } = await admin.auth.admin.listUsers()
+        if (error) return res.status(503).json({ error: 'Não foi possível obter os últimos acessos.' })
+        const ultimosAcessos = Object.fromEntries(data.users.map(u => [u.id, u.last_sign_in_at]))
+        return res.status(200).json({ ultimosAcessos })
+      }
+
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
       if (!body) return res.status(400).json({ error: 'Pedido inválido.' })
       const uuidRegex = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i

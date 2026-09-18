@@ -21,7 +21,7 @@ test('Adaptador local devolve JSON de configuração ausente', async () => {
   assert.match(JSON.parse(res.body).error, /configurada/)
 })
 test('Adaptador local bloqueia método, corpo inválido e pedidos grandes', async () => {
-  assert.equal((await request({method:'GET'})).statusCode, 405)
+  assert.equal((await request({method:'PUT'})).statusCode, 405)
   assert.equal((await request({body:'{'})).statusCode, 400)
   assert.equal((await request({contentType:'text/plain'})).statusCode, 415)
   assert.equal((await request({body:'x'.repeat(17000)})).statusCode, 413)

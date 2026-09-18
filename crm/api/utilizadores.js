@@ -122,6 +122,7 @@ export function createHandler({ env = process.env, client = createClient, fetchI
         if (body.newPassword.length < 12 || Buffer.byteLength(body.newPassword, 'utf8') > 72) {
           return res.status(400).json({ error: 'A senha temporária deve ter pelo menos 12 caracteres e no máximo 72 bytes.' })
         }
+        const { data: alvo } = await admin.from('perfis').select('nome, email').eq('id', body.id).maybeSingle()
         const { error: pwError } = await admin.auth.admin.updateUserById(body.id, { password: body.newPassword })
         if (pwError) return res.status(409).json({ error: 'Não foi possível repor a senha. Atualize a página e tente novamente.' })
         const { error: flagError } = await admin.from('perfis').update({ exigir_troca_senha: true }).eq('id', body.id)
@@ -137,6 +138,10 @@ export function createHandler({ env = process.env, client = createClient, fetchI
             : 'A conta foi desativada até à reconciliação manual.'
           return res.status(409).json({ error: `A senha foi alterada, mas não foi possível marcar a troca obrigatória. ${detalhe}` })
         }
+        await admin.from('eventos_perfis').insert({
+          alvo_id: body.id, alvo_nome: alvo?.nome ?? null, alvo_email: alvo?.email ?? null,
+          acao: 'senha_reposta', realizado_por: auth.user.id, realizado_por_email: auth.user.email,
+        })
         return res.status(200).json({ message: 'Senha temporária definida. Entregue-a ao utilizador por um canal privado — ele terá de a trocar no próximo acesso.' })
       }
 
@@ -183,6 +188,10 @@ export function createHandler({ env = process.env, client = createClient, fetchI
         // Não apagar a conta: pode ter sido criada por outro pedido concorrente.
         return res.status(409).json({ error: 'A conta foi criada, mas o perfil não foi guardado. O acesso permanece bloqueado. Peça ao responsável técnico para verificar o perfil antes de repetir.' })
       }
+      await admin.from('eventos_perfis').insert({
+        alvo_id: data.user.id, alvo_nome: body.nome.trim(), alvo_email: email,
+        acao: 'criado', realizado_por: auth.user.id, realizado_por_email: auth.user.email,
+      })
       const emailEnviado = await enviarEmailBoasVindas({
         env, fetchImpl, nome: body.nome.trim(), email, password: body.password, crmUrl: CRM_SITE_URL,
       })

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import '../css/landing.css';
-import logoUrl from '../assets/images/logo-razao-dinamica-branca.png';
+import logoUrl from '../assets/images/logo-marca-branca.png';
 import problemImageUrl from '../assets/images/consultoria-cliente.jpg';
 import problemImage600 from '../assets/images/consultoria-cliente-600.webp';
 import problemImage900 from '../assets/images/consultoria-cliente-900.webp';
@@ -118,7 +118,7 @@ const faqs = [
 function Nav(){
   return <nav id="mainNav" aria-label="Navegação principal">
     <div className="wrap">
-      <a className="logo header-logo" href="#top" aria-label="Razão Dinâmica, início"><img src={logoUrl} width="1433" height="461" alt="Razão Dinâmica, Consultoria e Contabilidade" /></a>
+      <a className="logo header-logo" href="#top" aria-label="Razão Dinâmica, início"><img src={logoUrl} width="304" height="300" alt="" className="header-logo-icon" /><span className="header-logo-text"><span className="header-logo-name">Razão Dinâmica</span><span className="header-logo-tagline">Consultoria e Contabilidade</span></span></a>
       <div className="navlinks" id="mobileNavPanel">
         <a href="#abordagem">Abordagem</a><a href="#servicos">Serviços</a><a href="#faq">FAQ</a><a href="#contacto" className="cta">Marcar reunião</a><a href={WHATSAPP_HERO_URL} target="_blank" rel="noreferrer" className="cta cta-whatsapp" data-meta-event="whatsapp"><WhatsAppIcon /> WhatsApp</a>
       </div>
@@ -132,7 +132,7 @@ function Footer(){
     <div className="footer-accent" aria-hidden="true"></div>
     <div className="wrap">
       <div className="footer-main">
-        <a className="footer-logo" href="#top" aria-label="Razão Dinâmica, início"><img src={logoUrl} width="1433" height="461" alt="Razão Dinâmica, Consultoria e Contabilidade" loading="lazy" decoding="async" /></a>
+        <a className="footer-logo" href="#top" aria-label="Razão Dinâmica, início"><img src={logoUrl} width="304" height="300" alt="" className="footer-logo-icon" loading="lazy" decoding="async" /><span className="footer-logo-text"><span className="footer-logo-name">Razão Dinâmica</span><span className="footer-logo-tagline">Consultoria e Contabilidade</span></span></a>
         <p>A razão certa entre rigor contabilístico e visão de negócio.</p>
         <nav className="footer-nav" aria-label="Navegação do rodapé"><a href="#abordagem">Abordagem</a><a href="#servicos">Serviços</a><a href="#faq">FAQ</a><a href="#contacto">Contacto</a><a href="https://www.instagram.com/razaodinamica/" target="_blank" rel="noreferrer">Instagram</a><a href="https://www.facebook.com/profile.php?id=61593083117317" target="_blank" rel="noreferrer">Facebook</a></nav>
         <div className="footer-contact"><a href="mailto:geral@razaodinamica.pt">geral@razaodinamica.pt</a><a href="tel:+351919381551">+351 919 381 551</a><a href="tel:+351910205029">+351 910 205 029</a></div>

@@ -25,6 +25,7 @@ for (const oldEvents of [false, true]) test(`Permissões com migração antiga d
   await db.exec(await readFile(new URL('supabase-migration-permissao-edicao.sql', root), 'utf8'))
   await db.exec(await readFile(new URL('supabase-migration-excluir-utilizador.sql', root), 'utf8'))
   await db.exec(await readFile(new URL('supabase-migration-dispositivo-acesso.sql', root), 'utf8'))
+  await db.exec(await readFile(new URL('supabase-migration-eventos-perfis.sql', root), 'utf8'))
   for (let i = 0; i < ids.length; i++) {
     await db.query('insert into auth.users(id,email) values ($1, $2)', [ids[i], `user${i}@test.invalid`])
     if (i < 3) await db.query('insert into public.perfis(id,nome,email,papel) values ($1,$2,$3,$4)', [ids[i], `Pessoa ${i}`, `user${i}@test.invalid`, i === 0 ? 'admin' : 'gestor'])
@@ -195,6 +196,32 @@ for (const oldEvents of [false, true]) test(`Permissões com migração antiga d
     assert.equal((await rows('select ultimo_dispositivo from perfis where id=$1', [ids[2]]))[0].ultimo_dispositivo, 'desktop')
     await as(0)
     assert.equal((await rows('select ultimo_dispositivo from perfis where id=$1', [ids[0]]))[0].ultimo_dispositivo, null)
+  })
+  await t.test('Registar dispositivo não fica registado como edição de perfil', async () => {
+    await as(0)
+    const antes = (await rows('select count(*)::int as n from eventos_perfis'))[0].n
+    await as(2)
+    await db.query("select public.registar_dispositivo('desktop')")
+    await as(0)
+    const depois = (await rows('select count(*)::int as n from eventos_perfis'))[0].n
+    assert.equal(depois, antes)
+  })
+  await t.test('Eventos de perfil: gravados nas ações do admin, invisíveis e à prova de fraude para o gestor', async () => {
+    await as(0)
+    const editados = await rows("select * from eventos_perfis where alvo_id=$1 and acao='editado' order by criado_em", [ids[1]])
+    assert.ok(editados.length >= 2)
+    assert.equal(editados[0].realizado_por, ids[0])
+    assert.equal(editados[0].realizado_por_email, 'user0@test.invalid')
+    const detalhe = typeof editados[0].detalhe === 'string' ? JSON.parse(editados[0].detalhe) : editados[0].detalhe
+    assert.equal(detalhe.pode_editar_leads.depois, true)
+    const [excluido] = await rows("select * from eventos_perfis where alvo_id=$1 and acao='excluido'", [ids[1]])
+    assert.ok(excluido)
+    assert.equal(excluido.realizado_por, ids[0])
+    await assert.rejects(db.query('delete from eventos_perfis'))
+    await assert.rejects(db.query("update eventos_perfis set alvo_nome='Fraude'"))
+    await as(2)
+    assert.equal((await rows('select * from eventos_perfis')).length, 0)
+    await assert.rejects(db.query("insert into eventos_perfis(acao) values ('criado')"))
   })
   await db.close()
 })

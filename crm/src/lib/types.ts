@@ -85,3 +85,16 @@ export interface EventoLead {
   realizado_por_email: string | null
   criado_em: string
 }
+
+export type AcaoPerfil = 'criado' | 'editado' | 'excluido' | 'senha_reposta'
+
+export interface EventoPerfil {
+  id: string
+  alvo_id: string | null
+  alvo_nome: string | null
+  alvo_email: string | null
+  acao: AcaoPerfil
+  realizado_por: string | null
+  realizado_por_email: string | null
+  criado_em: string
+}
